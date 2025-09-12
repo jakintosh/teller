@@ -13,33 +13,42 @@ type IntelligenceDB struct {
 	// Payees is a sorted list of unique payee names encountered in the user's
 	// transaction history.
 	Payees []string
+	// Accounts is a Trie containing all unique account names for efficient
+	// prefix-based searching.
+	Accounts *Trie
 }
 
 // New creates and initializes a new IntelligenceDB from a slice of transactions.
 // It parses the transactions to populate the database's queryable fields.
 func New(transactions []core.Transaction) *IntelligenceDB {
-	// Use a map to efficiently track unique payee names. The value can be an
-	// empty struct to minimize memory usage.
 	payeeSet := make(map[string]struct{})
+	accountSet := make(map[string]struct{})
+
 	for _, t := range transactions {
-		// Ensure we don't add empty payee strings to our set.
 		if t.Payee != "" {
 			payeeSet[t.Payee] = struct{}{}
 		}
+		for _, p := range t.Postings {
+			if p.Account != "" {
+				accountSet[p.Account] = struct{}{}
+			}
+		}
 	}
 
-	// Convert the set of payees into a slice.
 	payees := make([]string, 0, len(payeeSet))
 	for payee := range payeeSet {
 		payees = append(payees, payee)
 	}
-
-	// Sort the slice of payees alphabetically. This ensures a consistent and
-	// predictable order for presentation and querying.
 	sort.Strings(payees)
 
+	accountsTrie := NewTrie()
+	for account := range accountSet {
+		accountsTrie.Insert(account)
+	}
+
 	return &IntelligenceDB{
-		Payees: payees,
+		Payees:   payees,
+		Accounts: accountsTrie,
 	}
 }
 
@@ -62,5 +71,33 @@ func (db *IntelligenceDB) FindPayees(prefix string) []string {
 		}
 	}
 
+	return matches
+}
+
+// FindAccounts searches for accounts with a given prefix. The search is
+// case-insensitive. It returns a slice of matching accounts.
+func (db *IntelligenceDB) FindAccounts(prefix string) []string {
+	if prefix == "" {
+		return []string{}
+	}
+
+	// The Trie Find method is case-sensitive, so we handle case-insensitivity
+	// by finding all accounts and then filtering. This is inefficient and
+	// a better approach would be to make the Trie case-insensitive.
+	// For now, this will work.
+	// A better approach is to convert the prefix to lower case and
+	// traverse the trie with lower case characters.
+	// But the current trie implementation does not support this.
+	// So we will get all accounts and filter them.
+	allAccounts := db.Accounts.Find("")
+	matches := make([]string, 0)
+	lowerPrefix := strings.ToLower(prefix)
+
+	for _, account := range allAccounts {
+		if strings.HasPrefix(strings.ToLower(account), lowerPrefix) {
+			matches = append(matches, account)
+		}
+	}
+	sort.Strings(matches)
 	return matches
 }
