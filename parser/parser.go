@@ -19,8 +19,8 @@ var (
 
 	// postingRegex captures the account and amount from a posting line.
 	// It looks for an indented line, captures the account name (can include spaces and colons),
-	// followed by at least two spaces, and then the optional amount.
-	postingRegex = regexp.MustCompile(`^\s+([\w\s:]+?)\s{2,}(.*?)?\s*(?:;.*)?$`)
+	// followed optionally by at least two spaces and an amount (for elided amounts).
+	postingRegex = regexp.MustCompile(`^\s+([\w\s:]+?)(?:\s{2,}(.*?))?\s*(?:;.*)?$`)
 
 	// commentRegex checks if a line is a comment.
 	commentRegex = regexp.MustCompile(`^\s*[;#%|*]`)
