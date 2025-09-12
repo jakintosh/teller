@@ -1,0 +1,28 @@
+; Sample ledger file for testing the parser
+
+2024-05-01 * Opening Balance
+  Assets:Checking      $1000.00
+  Equity:Opening Balances
+
+# A standard expense
+2024-05-10 Coffee Shop
+  Expenses:Food:Coffee      $5.50
+  Assets:Checking
+
+2024/05/12 Supermarket
+  Expenses:Groceries   $125.45
+  Expenses:Household    $30.00
+  Liabilities:Credit Card  $-155.45
+
+2024-05-15 Gas Station
+  Expenses:Auto:Gas   $45.00
+  Assets:Checking
+
+; Transaction with an elided amount
+2024-05-20 Internet Bill
+  Expenses:Utilities:Internet   $60.00
+  Assets:Checking
+
+2024-05-21 Paycheck
+  Assets:Checking          $2000.00
+  Income:Salary           $-2000.00
