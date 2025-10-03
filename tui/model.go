@@ -437,13 +437,17 @@ func (m *Model) updateTransactionView(msg tea.KeyMsg) tea.Cmd {
 			return nil
 		}
 	case "ctrl+n":
-		m.addLine(m.form.focusedSection, true)
+		if m.hasActiveLine() {
+			m.addLine(m.form.focusedSection, true)
+		}
 		return nil
 	case "ctrl+d":
-		m.deleteLine(m.form.focusedSection)
+		if m.hasActiveLine() {
+			m.deleteLine(m.form.focusedSection)
+		}
 		return nil
 	case "b":
-		if m.balanceCurrentLine() {
+		if m.canBalanceCurrentLine() && m.balanceCurrentLine() {
 			m.recalculateTotals()
 		}
 		return nil
@@ -643,6 +647,48 @@ func (m *Model) currentLine() *postingLine {
 		}
 	}
 	return nil
+}
+
+func (m *Model) lineHasFocus(section sectionType, index int) bool {
+	if m.form.focusedField != focusSectionAccount && m.form.focusedField != focusSectionAmount {
+		return false
+	}
+	return m.form.focusedSection == section && m.form.focusedIndex == index
+}
+
+func (m *Model) hasActiveLine() bool {
+	if m.form.focusedField != focusSectionAccount && m.form.focusedField != focusSectionAmount {
+		return false
+	}
+	return m.currentLine() != nil
+}
+
+func (m *Model) canBalanceCurrentLine() bool {
+	if m.form.focusedField != focusSectionAmount || m.form.focusedSection != sectionCredit {
+		return false
+	}
+	line := m.currentLine()
+	if line == nil {
+		return false
+	}
+	if strings.TrimSpace(line.amountInput.Value()) != "" {
+		return false
+	}
+	if len(m.form.debitLines)+len(m.form.creditLines) < 2 {
+		return false
+	}
+	unfilled := 0
+	for i := range m.form.debitLines {
+		if strings.TrimSpace(m.form.debitLines[i].amountInput.Value()) == "" {
+			unfilled++
+		}
+	}
+	for i := range m.form.creditLines {
+		if strings.TrimSpace(m.form.creditLines[i].amountInput.Value()) == "" {
+			unfilled++
+		}
+	}
+	return unfilled == 1
 }
 
 func (m *Model) handleEnterKey() bool {
@@ -1164,11 +1210,11 @@ func (m *Model) renderTransactionView() string {
 	fmt.Fprintf(&b, "Debits   (total %s)\n", m.form.debitTotal.StringFixed(2))
 	for i, line := range m.form.debitLines {
 		cursor := " "
-		if m.form.focusedSection == sectionDebit && m.form.focusedIndex == i {
+		if m.lineHasFocus(sectionDebit, i) {
 			cursor = ">"
 		}
 		fmt.Fprintf(&b, "%s [%s] [%s]", cursor, line.accountInput.View(), line.amountInput.View())
-		if m.form.focusedSection == sectionDebit && m.form.focusedIndex == i && m.form.focusedField == focusSectionAccount {
+		if m.lineHasFocus(sectionDebit, i) && m.form.focusedField == focusSectionAccount {
 			b.WriteString(renderSuggestionList(line.accountInput))
 		}
 		b.WriteString("\n")
@@ -1178,11 +1224,11 @@ func (m *Model) renderTransactionView() string {
 	fmt.Fprintf(&b, "Credits  (total %s)\n", m.form.creditTotal.StringFixed(2))
 	for i, line := range m.form.creditLines {
 		cursor := " "
-		if m.form.focusedSection == sectionCredit && m.form.focusedIndex == i {
+		if m.lineHasFocus(sectionCredit, i) {
 			cursor = ">"
 		}
 		fmt.Fprintf(&b, "%s [%s] [%s]", cursor, line.accountInput.View(), line.amountInput.View())
-		if m.form.focusedSection == sectionCredit && m.form.focusedIndex == i && m.form.focusedField == focusSectionAccount {
+		if m.lineHasFocus(sectionCredit, i) && m.form.focusedField == focusSectionAccount {
 			b.WriteString(renderSuggestionList(line.accountInput))
 		}
 		b.WriteString("\n")
@@ -1193,8 +1239,15 @@ func (m *Model) renderTransactionView() string {
 		fmt.Fprintf(&b, "%s\n\n", msg)
 	}
 
-	help := "[tab]next [shift+tab]prev [ctrl+n]add line [ctrl+d]delete line [b]alance [ctrl+c]confirm [esc]cancel [ctrl+q]quit"
-	b.WriteString(help)
+	commands := []string{"[tab]next", "[shift+tab]prev"}
+	if m.hasActiveLine() {
+		commands = append(commands, "[ctrl+n]add line", "[ctrl+d]delete line")
+	}
+	if m.canBalanceCurrentLine() {
+		commands = append(commands, "[b]alance")
+	}
+	commands = append(commands, "[ctrl+c]confirm", "[esc]cancel", "[ctrl+q]quit")
+	b.WriteString(strings.Join(commands, " "))
 	return b.String()
 }
 
