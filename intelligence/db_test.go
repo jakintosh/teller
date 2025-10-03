@@ -296,6 +296,40 @@ func TestFindTemplates(t *testing.T) {
 	}
 }
 
+func TestTemplatesIncludeElidedAmounts(t *testing.T) {
+	transactions := []core.Transaction{
+		{
+			Payee: "City Market",
+			Postings: []core.Posting{
+				{Account: "Expenses:Food:Groceries", Amount: "125.67"},
+				{Account: "Expenses:Food:Alcohol", Amount: "19.99"},
+				{Account: "Assets:Checking", Amount: ""},
+			},
+		},
+	}
+
+	db, err := NewIntelligenceDB(transactions)
+	if err != nil {
+		t.Fatalf("Failed to create IntelligenceDB: %v", err)
+	}
+
+	templates := db.FindTemplates("City Market")
+	if len(templates) != 1 {
+		t.Fatalf("Expected 1 template, got %d", len(templates))
+	}
+
+	tpl := templates[0]
+	expectedDebit := []string{"Expenses:Food:Alcohol", "Expenses:Food:Groceries"}
+	if !equalSlices(tpl.DebitAccounts, expectedDebit) {
+		t.Fatalf("expected debit accounts %v, got %v", expectedDebit, tpl.DebitAccounts)
+	}
+
+	expectedCredit := []string{"Assets:Checking"}
+	if !equalSlices(tpl.CreditAccounts, expectedCredit) {
+		t.Fatalf("expected credit accounts %v, got %v", expectedCredit, tpl.CreditAccounts)
+	}
+}
+
 func equalSlices(a, b []string) bool {
 	if len(a) != len(b) {
 		return false

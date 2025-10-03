@@ -75,18 +75,61 @@ func NewIntelligenceDB(transactions []core.Transaction) (*IntelligenceDB, error)
 
 		var debitAccounts []string
 		var creditAccounts []string
+
+		type templatePosting struct {
+			account   string
+			amount    decimal.Decimal
+			hasAmount bool
+		}
+
+		var postings []templatePosting
+		var balance decimal.Decimal
+		var missing []int
+
 		for _, posting := range tx.Postings {
-			if posting.Account == "" {
+			account := strings.TrimSpace(posting.Account)
+			if account == "" {
 				continue
 			}
-			amount, err := decimal.NewFromString(strings.TrimSpace(posting.Amount))
+
+			rawAmount := strings.TrimSpace(posting.Amount)
+			entry := templatePosting{account: account}
+			if rawAmount == "" {
+				missing = append(missing, len(postings))
+				postings = append(postings, entry)
+				continue
+			}
+
+			amount, err := decimal.NewFromString(rawAmount)
 			if err != nil {
+				postings = append(postings, entry)
 				continue
 			}
-			if amount.Sign() >= 0 {
-				debitAccounts = append(debitAccounts, posting.Account)
+
+			entry.amount = amount
+			entry.hasAmount = true
+			postings = append(postings, entry)
+			balance = balance.Add(amount)
+		}
+
+		if len(postings) == 0 {
+			continue
+		}
+
+		if len(missing) == 1 {
+			remainder := balance.Neg()
+			postings[missing[0]].amount = remainder
+			postings[missing[0]].hasAmount = true
+		}
+
+		for _, entry := range postings {
+			if !entry.hasAmount {
+				continue
+			}
+			if entry.amount.Sign() >= 0 {
+				debitAccounts = append(debitAccounts, entry.account)
 			} else {
-				creditAccounts = append(creditAccounts, posting.Account)
+				creditAccounts = append(creditAccounts, entry.account)
 			}
 		}
 

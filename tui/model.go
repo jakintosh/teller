@@ -49,6 +49,7 @@ const (
 const (
 	focusDate focusedField = iota
 	focusPayee
+	focusTemplateButton
 	focusSectionAccount
 	focusSectionAmount
 )
@@ -75,6 +76,7 @@ type Model struct {
 	form            transactionForm
 	templateOptions []intelligence.TemplateRecord
 	templateCursor  int
+	templatePayee   string
 	pendingConfirm  confirmKind
 	editingIndex    int
 
@@ -137,6 +139,7 @@ func (m *Model) resetForm(baseDate time.Time) {
 	m.form = newTransactionForm(baseDate)
 	m.templateOptions = nil
 	m.templateCursor = 0
+	m.templatePayee = ""
 	m.editingIndex = -1
 }
 
@@ -448,6 +451,7 @@ func (m *Model) updateTransactionView(msg tea.KeyMsg) tea.Cmd {
 
 	cmd := m.updateFocusedInput(msg)
 	m.refreshSuggestions()
+	m.refreshTemplateOptions()
 	m.recalculateTotals()
 	return cmd
 }
@@ -522,7 +526,9 @@ func (m *Model) advanceFocus() {
 		m.form.focusedField = focusPayee
 		m.form.payeeInput.Focus()
 	case focusPayee:
-		m.form.payeeInput.Blur()
+		m.focusTemplateButton()
+		m.refreshTemplateOptions()
+	case focusTemplateButton:
 		m.focusSection(sectionDebit, 0, focusSectionAccount)
 	case focusSectionAccount:
 		if line := m.currentLine(); line != nil {
@@ -554,11 +560,13 @@ func (m *Model) retreatFocus() {
 	case focusPayee:
 		m.form.payeeInput.Blur()
 		m.form.focusedField = focusDate
+	case focusTemplateButton:
+		m.form.focusedField = focusPayee
+		m.form.payeeInput.Focus()
 	case focusSectionAccount:
 		if m.form.focusedSection == sectionDebit {
 			if m.form.focusedIndex == 0 {
-				m.form.focusedField = focusPayee
-				m.form.payeeInput.Focus()
+				m.focusTemplateButton()
 			} else {
 				m.focusSection(sectionDebit, m.form.focusedIndex-1, focusSectionAmount)
 			}
@@ -608,6 +616,11 @@ func (m *Model) focusSection(section sectionType, index int, field focusedField)
 	}
 }
 
+func (m *Model) focusTemplateButton() {
+	m.blurCurrent()
+	m.form.focusedField = focusTemplateButton
+}
+
 func (m *Model) blurCurrent() {
 	if line := m.currentLine(); line != nil {
 		line.accountInput.Blur()
@@ -639,6 +652,9 @@ func (m *Model) handleEnterKey() bool {
 		return true
 	case focusPayee:
 		m.advanceFocus()
+		return true
+	case focusTemplateButton:
+		m.openTemplateSelection()
 		return true
 	case focusSectionAccount:
 		m.advanceFocus()
@@ -692,7 +708,8 @@ func (m *Model) tryAcceptSuggestion() bool {
 	input.CursorEnd()
 	m.refreshSuggestions()
 	if input == &m.form.payeeInput {
-		m.templateOptions = m.db.FindTemplates(suggestion)
+		m.templatePayee = ""
+		m.refreshTemplateOptions()
 	}
 	return true
 }
@@ -834,6 +851,7 @@ func (m *Model) startEditingTransaction(index int) {
 	m.editingIndex = index
 	m.form.payeeInput.SetValue(tx.Payee)
 	m.form.payeeInput.CursorEnd()
+	m.refreshTemplateOptions()
 
 	m.form.debitLines = nil
 	m.form.creditLines = nil
@@ -867,6 +885,22 @@ func (m *Model) startEditingTransaction(index int) {
 func (m *Model) openConfirm(kind confirmKind) {
 	m.pendingConfirm = kind
 	m.currentView = viewConfirm
+}
+
+func (m *Model) openTemplateSelection() {
+	m.refreshTemplateOptions()
+	if m.templatePayee == "" {
+		m.setStatus("Enter a payee to view templates", statusShortDuration)
+		return
+	}
+	if len(m.templateOptions) == 0 {
+		m.setStatus("No templates available for this payee", statusShortDuration)
+		return
+	}
+	if m.templateCursor >= len(m.templateOptions) {
+		m.templateCursor = 0
+	}
+	m.currentView = viewTemplate
 }
 
 func (m *Model) updateTemplateView(msg tea.KeyMsg) tea.Cmd {
@@ -914,14 +948,12 @@ func (m *Model) applyTemplate(record intelligence.TemplateRecord) {
 		m.form.creditLines = []postingLine{newPostingLine()}
 	}
 
-	m.templateOptions = nil
 	m.currentView = viewTransaction
 	m.focusSection(sectionDebit, 0, focusSectionAccount)
 	m.recalculateTotals()
 }
 
 func (m *Model) skipTemplate() {
-	m.templateOptions = nil
 	m.currentView = viewTransaction
 	m.focusSection(sectionDebit, 0, focusSectionAccount)
 	m.recalculateTotals()
@@ -1122,7 +1154,12 @@ func (m *Model) renderTransactionView() string {
 	if m.form.focusedField == focusPayee {
 		b.WriteString(renderSuggestionList(m.form.payeeInput))
 	}
-	b.WriteString("\n\n")
+	b.WriteString("\n")
+	buttonCursor := " "
+	if m.form.focusedField == focusTemplateButton {
+		buttonCursor = ">"
+	}
+	fmt.Fprintf(&b, "        %s[%s]\n\n", buttonCursor, templateAvailabilityLabel(len(m.templateOptions)))
 
 	fmt.Fprintf(&b, "Debits   (total %s)\n", m.form.debitTotal.StringFixed(2))
 	for i, line := range m.form.debitLines {
@@ -1159,6 +1196,13 @@ func (m *Model) renderTransactionView() string {
 	help := "[tab]next [shift+tab]prev [ctrl+n]add line [ctrl+d]delete line [b]alance [ctrl+c]confirm [esc]cancel [ctrl+q]quit"
 	b.WriteString(help)
 	return b.String()
+}
+
+func templateAvailabilityLabel(count int) string {
+	if count == 1 {
+		return "1 template available"
+	}
+	return fmt.Sprintf("%d templates available", count)
 }
 
 func (m *Model) renderTemplateView() string {
@@ -1244,6 +1288,21 @@ func (m *Model) refreshSuggestions() {
 			line.amountInput.SetSuggestions(nil)
 		}
 	}
+}
+
+func (m *Model) refreshTemplateOptions() {
+	payee := strings.TrimSpace(m.form.payeeInput.Value())
+	if payee == m.templatePayee {
+		return
+	}
+	m.templatePayee = payee
+	if payee == "" {
+		m.templateOptions = nil
+		m.templateCursor = 0
+		return
+	}
+	m.templateOptions = m.db.FindTemplates(payee)
+	m.templateCursor = 0
 }
 
 func (m *Model) accountSuggestions(prefix string) []string {

@@ -25,6 +25,7 @@ This document outlines the technical requirements for the Ledger Helper TUI appl
 2.2.4.2. A "template" is defined as the ordered combination of debit accounts (amount ≥ 0) and credit accounts (amount < 0) that appear together in a transaction, independent of amounts.
 2.2.4.3. The system SHALL calculate the frequency of each template for a given payee.
 2.2.4.4. The system MUST be able to retrieve a list of templates for a payee, ordered from most to least frequent.
+2.2.4.5. When a transaction omits an amount for one posting, the system MUST infer the missing value from the other legs and classify the posting on the correct debit or credit side before recording the template.
 
 ## **3\. Core Features & Business Logic**
 

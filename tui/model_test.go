@@ -85,6 +85,7 @@ func TestTransactionFlowAddsBatchEntry(t *testing.T) {
 	for _, r := range "Grocery Store" {
 		send(keyRunes(r))
 	}
+	send(tea.KeyMsg{Type: tea.KeyTab}) // template button
 	send(tea.KeyMsg{Type: tea.KeyTab}) // debit account
 	for _, r := range "Expenses:Food:Groceries" {
 		send(keyRunes(r))
