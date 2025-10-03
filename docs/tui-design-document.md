@@ -42,6 +42,7 @@ The application flow follows a double-entry workflow with explicit debit and cre
    * The screen shows a compact header (Date, Payee) followed by two allocation sections: **Debits** and **Credits**.:
    * **Flow Step 1: Date Entry**:
      * Defaults to the date of the previously entered transaction.
+     * When starting a new transaction, the day segment is highlighted by default so users can quickly bump the day forward/backward.
      * ←/→ keys select date component (year, month, day).
      * ↑/↓ keys increment/decrement the selected component. Typing a number also works.
    * **Flow Step 2: Payee Entry**:
@@ -69,7 +70,7 @@ The application flow follows a double-entry workflow with explicit debit and cre
      * **Action:** Debits and credits are validated for balance. On success, the transaction is added to the batch and **the session is persisted to .ledger-helper-batch.tmp**.
      * **Transition:** to Batch Review Screen.
 4. **State: Template Selection Screen**
-   * The template picker is opened explicitly from the "templates available" control under the payee input. The modal enumerates saved templates, showing debit accounts on the left and credit accounts on the right. Selecting one seeds both sections; `esc` skips, and the control remains available if the user wants to revisit the picker later.:
+   * The template picker is opened explicitly from the "templates available" control under the payee input. The modal enumerates saved templates, presenting debit accounts stacked beneath a "Debit Accounts" heading and credit accounts stacked beneath a "Credit Accounts" heading. When the list exceeds the visible space, the view scrolls forward and backward as the selection moves past the current page. Selecting one seeds both sections; `esc` skips, and the control remains available if the user wants to revisit the picker later.:
 5. **End States: Confirm Write & Confirm Quit**
    * Completing a "Write" action will delete the .ledger-helper-batch.tmp file, while quitting reminds the user about any unwritten batch items.
 
@@ -80,3 +81,4 @@ The application flow follows a double-entry workflow with explicit debit and cre
 * Balancing: `b` fills a credit amount with the remaining balance.
 * Confirmation & exit: `ctrl+c` confirm transaction, `esc` return to batch, `ctrl+q` quit.
 * Templates: `enter` apply highlighted template, `esc` skip.
+* On-screen command hints appear as a vertical stack at the bottom of each view to keep navigation cues scannable.

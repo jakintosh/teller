@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,6 +45,36 @@ func testDB(t *testing.T) *intelligence.IntelligenceDB {
 
 func wait() {
 	time.Sleep(10 * time.Millisecond)
+}
+
+func TestNewTransactionHighlightsDaySegment(t *testing.T) {
+	db := testDB(t)
+	model := NewModel(db, "ledger.dat")
+
+	if model.form.date.segment != dateSegmentDay {
+		t.Fatalf("expected initial date segment to default to day, got %v", model.form.date.segment)
+	}
+
+	model.startNewTransaction()
+	if model.form.date.segment != dateSegmentDay {
+		t.Fatalf("expected new transaction date segment to be day, got %v", model.form.date.segment)
+	}
+}
+
+func TestTransactionActionsStackedVertically(t *testing.T) {
+	db := testDB(t)
+	model := NewModel(db, "ledger.dat")
+	model.startNewTransaction()
+
+	view := model.renderTransactionView()
+	actionsStart := strings.Index(view, "[tab]next")
+	if actionsStart == -1 {
+		t.Fatalf("failed to locate actions in transaction view: %q", view)
+	}
+	actions := view[actionsStart:]
+	if !strings.Contains(actions, "\n[shift+tab]prev") {
+		t.Fatalf("expected actions to be stacked vertically, got %q", actions)
+	}
 }
 
 func TestTransactionFlowAddsBatchEntry(t *testing.T) {
@@ -169,6 +200,7 @@ func TestTemplateSelectionPopulatesSections(t *testing.T) {
 		CreditAccounts: []string{"Assets:Checking"},
 		Frequency:      5,
 	}}
+	model.templateOffset = 0
 	model.currentView = viewTemplate
 
 	model.updateTemplateView(tea.KeyMsg{Type: tea.KeyEnter})
@@ -184,5 +216,61 @@ func TestTemplateSelectionPopulatesSections(t *testing.T) {
 	}
 	if model.form.creditLines[0].accountInput.Value() != "Assets:Checking" {
 		t.Fatalf("unexpected credit account: %s", model.form.creditLines[0].accountInput.Value())
+	}
+}
+
+func TestTemplateViewDisplaysAccountsVertically(t *testing.T) {
+	db := testDB(t)
+	model := NewModel(db, "ledger.dat")
+	model.templateOptions = []intelligence.TemplateRecord{{
+		DebitAccounts:  []string{"Expenses:Rent", "Expenses:Utilities"},
+		CreditAccounts: []string{"Assets:Checking"},
+		Frequency:      2,
+	}}
+	model.templateCursor = 0
+	model.templateOffset = 0
+
+	view := model.renderTemplateView()
+	if !strings.Contains(view, "\n    Debit Accounts:\n      Expenses:Rent\n      Expenses:Utilities\n") {
+		t.Fatalf("expected debit accounts to be listed vertically, got %q", view)
+	}
+	if !strings.Contains(view, "\n    Credit Accounts:\n      Assets:Checking\n") {
+		t.Fatalf("expected credit accounts to be listed vertically, got %q", view)
+	}
+	if !strings.Contains(view, "\n[enter]apply\n[esc]skip") {
+		t.Fatalf("expected template actions to be vertical, got %q", view)
+	}
+}
+
+func TestTemplateViewScrollsWithCursor(t *testing.T) {
+	db := testDB(t)
+	model := NewModel(db, "ledger.dat")
+
+	for i := 0; i < maxTemplateDisplay+1; i++ {
+		model.templateOptions = append(model.templateOptions, intelligence.TemplateRecord{
+			DebitAccounts:  []string{fmt.Sprintf("Expenses:Category:%d", i+1)},
+			CreditAccounts: []string{"Assets:Checking"},
+			Frequency:      i + 1,
+		})
+	}
+	model.templateCursor = 0
+	model.templateOffset = 0
+	model.ensureTemplateCursorVisible()
+
+	view := model.renderTemplateView()
+	if strings.Contains(view, fmt.Sprintf("%d.", maxTemplateDisplay+1)) {
+		t.Fatalf("expected initial template view to exclude item %d, got %q", maxTemplateDisplay+1, view)
+	}
+
+	for i := 0; i < maxTemplateDisplay; i++ {
+		model.updateTemplateView(keyRunes('j'))
+	}
+
+	view = model.renderTemplateView()
+	if !strings.Contains(view, fmt.Sprintf("%d.", maxTemplateDisplay+1)) {
+		t.Fatalf("expected template view to include item %d after scrolling, got %q", maxTemplateDisplay+1, view)
+	}
+	if strings.Contains(view, "1.") {
+		t.Fatalf("expected template view to scroll past first item, got %q", view)
 	}
 }

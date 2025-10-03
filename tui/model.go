@@ -22,6 +22,7 @@ const (
 	statusShortDuration  = 3 * time.Second
 	maxSuggestionDisplay = 5
 	balanceTolerance     = 0.01
+	maxTemplateDisplay   = 5
 )
 
 type viewState int
@@ -76,6 +77,7 @@ type Model struct {
 	form            transactionForm
 	templateOptions []intelligence.TemplateRecord
 	templateCursor  int
+	templateOffset  int
 	templatePayee   string
 	pendingConfirm  confirmKind
 	editingIndex    int
@@ -139,6 +141,7 @@ func (m *Model) resetForm(baseDate time.Time) {
 	m.form = newTransactionForm(baseDate)
 	m.templateOptions = nil
 	m.templateCursor = 0
+	m.templateOffset = 0
 	m.templatePayee = ""
 	m.editingIndex = -1
 }
@@ -149,6 +152,7 @@ func newTransactionForm(baseDate time.Time) transactionForm {
 	}
 	date := dateField{}
 	date.setTime(baseDate)
+	date.segment = dateSegmentDay
 
 	payee := newTextInput("Payee")
 
@@ -946,6 +950,7 @@ func (m *Model) openTemplateSelection() {
 	if m.templateCursor >= len(m.templateOptions) {
 		m.templateCursor = 0
 	}
+	m.ensureTemplateCursorVisible()
 	m.currentView = viewTemplate
 }
 
@@ -958,10 +963,12 @@ func (m *Model) updateTemplateView(msg tea.KeyMsg) tea.Cmd {
 	case "up", "k":
 		if m.templateCursor > 0 {
 			m.templateCursor--
+			m.ensureTemplateCursorVisible()
 		}
 	case "down", "j":
 		if m.templateCursor < len(m.templateOptions)-1 {
 			m.templateCursor++
+			m.ensureTemplateCursorVisible()
 		}
 	case "enter":
 		m.applyTemplate(m.templateOptions[m.templateCursor])
@@ -1247,7 +1254,7 @@ func (m *Model) renderTransactionView() string {
 		commands = append(commands, "[b]alance")
 	}
 	commands = append(commands, "[ctrl+c]confirm", "[esc]cancel", "[ctrl+q]quit")
-	b.WriteString(strings.Join(commands, " "))
+	b.WriteString(strings.Join(commands, "\n"))
 	return b.String()
 }
 
@@ -1261,20 +1268,53 @@ func templateAvailabilityLabel(count int) string {
 func (m *Model) renderTemplateView() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "-- Templates for %s --\n\n", m.form.payeeInput.Value())
-	for i, tpl := range m.templateOptions {
+	if len(m.templateOptions) == 0 {
+		b.WriteString("No templates available\n\n[esc]skip")
+		return b.String()
+	}
+	start := m.templateOffset
+	if start < 0 {
+		start = 0
+	}
+	if start >= len(m.templateOptions) {
+		start = len(m.templateOptions) - 1
+	}
+	end := start + maxTemplateDisplay
+	if end > len(m.templateOptions) {
+		end = len(m.templateOptions)
+	}
+	for i := start; i < end; i++ {
+		tpl := m.templateOptions[i]
 		cursor := " "
 		if i == m.templateCursor {
 			cursor = ">"
 		}
-		fmt.Fprintf(&b, "%s %d. Debit: %s | Credit: %s (used %d times)\n",
-			cursor,
-			i+1,
-			strings.Join(tpl.DebitAccounts, ", "),
-			strings.Join(tpl.CreditAccounts, ", "),
-			tpl.Frequency,
-		)
+		usageLabel := "times"
+		if tpl.Frequency == 1 {
+			usageLabel = "time"
+		}
+		fmt.Fprintf(&b, "%s %d. Used %d %s\n", cursor, i+1, tpl.Frequency, usageLabel)
+		b.WriteString("    Debit Accounts:\n")
+		if len(tpl.DebitAccounts) == 0 {
+			b.WriteString("      (none)\n")
+		} else {
+			for _, account := range tpl.DebitAccounts {
+				fmt.Fprintf(&b, "      %s\n", account)
+			}
+		}
+		b.WriteString("    Credit Accounts:\n")
+		if len(tpl.CreditAccounts) == 0 {
+			b.WriteString("      (none)\n")
+		} else {
+			for _, account := range tpl.CreditAccounts {
+				fmt.Fprintf(&b, "      %s\n", account)
+			}
+		}
+		if i < end-1 {
+			b.WriteString("\n")
+		}
 	}
-	b.WriteString("\n[enter]apply  [esc]skip")
+	b.WriteString("\n[enter]apply\n[esc]skip")
 	return b.String()
 }
 
@@ -1352,10 +1392,45 @@ func (m *Model) refreshTemplateOptions() {
 	if payee == "" {
 		m.templateOptions = nil
 		m.templateCursor = 0
+		m.templateOffset = 0
 		return
 	}
 	m.templateOptions = m.db.FindTemplates(payee)
 	m.templateCursor = 0
+	m.templateOffset = 0
+}
+
+func (m *Model) ensureTemplateCursorVisible() {
+	if len(m.templateOptions) == 0 {
+		m.templateOffset = 0
+		return
+	}
+	if m.templateCursor < 0 {
+		m.templateCursor = 0
+	}
+	if m.templateCursor >= len(m.templateOptions) {
+		m.templateCursor = len(m.templateOptions) - 1
+	}
+	if m.templateCursor < m.templateOffset {
+		m.templateOffset = m.templateCursor
+	}
+	visible := maxTemplateDisplay
+	if visible <= 0 {
+		visible = 1
+	}
+	if m.templateCursor >= m.templateOffset+visible {
+		m.templateOffset = m.templateCursor - visible + 1
+	}
+	maxOffset := len(m.templateOptions) - visible
+	if maxOffset < 0 {
+		maxOffset = 0
+	}
+	if m.templateOffset > maxOffset {
+		m.templateOffset = maxOffset
+	}
+	if m.templateOffset < 0 {
+		m.templateOffset = 0
+	}
 }
 
 func (m *Model) accountSuggestions(prefix string) []string {

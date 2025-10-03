@@ -1,6 +1,12 @@
 # Development Journal
 
 ## 2025-10-03
+- Defaulted the transaction date focus to the day segment when opening a new form to streamline date tweaks.
+- Reworked the transaction view action hints into a vertical stack and realigned the template picker with vertical debit/credit listings plus automatic paging.
+- Added regression tests covering the new focus behavior, stacked commands, and template list scrolling.
+- Synchronized the design and technical documentation with the revised UI patterns.
+
+## 2025-10-03
 - Overhauled transaction entry into debit/credit sections with balancing shortcuts.
 - Updated template engine to persist debit and credit account sets.
 - Expanded Bubble Tea tests for ctrl+c confirm, balancing, and template seeding.

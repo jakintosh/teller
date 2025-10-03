@@ -56,3 +56,10 @@ This document outlines the technical requirements for the Ledger Helper TUI appl
 4.4.2. On startup, the application MUST check for the existence of this temporary file.
 4.4.3. If the file is found, the application MUST prompt the user to restore the previous session. If the user accepts, the batch is loaded from the file.
 4.4.4. The temporary file MUST be deleted upon successful writing of the batch to the main ledger file or when the user quits without saving.
+
+4.5. Command Hint Layout:
+4.5.1. The contextual action hints displayed at the bottom of each screen SHALL be rendered as a vertically stacked list to improve readability.
+
+4.6. Template Picker Presentation:
+4.6.1. The template selection modal SHALL present debit and credit accounts in vertically stacked lists under clear headings.
+4.6.2. The template selection modal SHALL automatically scroll the visible window as the highlighted template moves beyond the current viewport.
