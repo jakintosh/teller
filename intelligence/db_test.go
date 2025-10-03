@@ -1,0 +1,295 @@
+package intelligence
+
+import (
+	"testing"
+	"time"
+
+	"git.sr.ht/~jakintosh/teller/core"
+)
+
+func TestNewIntelligenceDB(t *testing.T) {
+	// Create mock transactions
+	transactions := []core.Transaction{
+		{
+			Date:  time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
+			Payee: "Super Grocery Store",
+			Postings: []core.Posting{
+				{Account: "Expenses:Food:Groceries", Amount: "85.42"},
+				{Account: "Assets:Checking", Amount: "-85.42"},
+			},
+		},
+		{
+			Date:  time.Date(2025, 1, 16, 0, 0, 0, 0, time.UTC),
+			Payee: "Gas Station",
+			Postings: []core.Posting{
+				{Account: "Expenses:Auto:Gas", Amount: "45.00"},
+				{Account: "Assets:Credit Card", Amount: "-45.00"},
+			},
+		},
+		{
+			Date:  time.Date(2025, 1, 17, 0, 0, 0, 0, time.UTC),
+			Payee: "Super Grocery Store", // Duplicate payee
+			Postings: []core.Posting{
+				{Account: "Expenses:Food:Groceries", Amount: "125.67"},
+				{Account: "Assets:Checking", Amount: "-125.67"},
+			},
+		},
+		{
+			Date:  time.Date(2025, 1, 18, 0, 0, 0, 0, time.UTC),
+			Payee: "Coffee Shop",
+			Postings: []core.Posting{
+				{Account: "Expenses:Food:Dining", Amount: "8.50"},
+				{Account: "Assets:Checking", Amount: "-8.50"},
+			},
+		},
+	}
+
+	db, err := NewIntelligenceDB(transactions)
+	if err != nil {
+		t.Fatalf("Failed to create IntelligenceDB: %v", err)
+	}
+
+	// Check that we have the correct number of unique payees
+	expectedPayeeCount := 3 // Super Grocery Store, Gas Station, Coffee Shop
+	if len(db.Payees) != expectedPayeeCount {
+		t.Errorf("Expected %d unique payees, got %d", expectedPayeeCount, len(db.Payees))
+	}
+
+	// Check that accounts Trie is populated
+	if db.Accounts == nil {
+		t.Error("Expected Accounts Trie to be initialized")
+	}
+
+	// Check that payees are sorted
+	expectedPayees := []string{"Coffee Shop", "Gas Station", "Super Grocery Store"}
+	for i, expected := range expectedPayees {
+		if i >= len(db.Payees) {
+			t.Errorf("Missing payee at index %d: expected '%s'", i, expected)
+			continue
+		}
+		if db.Payees[i] != expected {
+			t.Errorf("Expected payee at index %d to be '%s', got '%s'", i, expected, db.Payees[i])
+		}
+	}
+}
+
+func TestFindPayees(t *testing.T) {
+	// Create mock transactions
+	transactions := []core.Transaction{
+		{Payee: "City Hardware"},
+		{Payee: "City Market"},
+		{Payee: "Coffee Shop"},
+		{Payee: "Gas Station"},
+	}
+
+	db, err := NewIntelligenceDB(transactions)
+	if err != nil {
+		t.Fatalf("Failed to create IntelligenceDB: %v", err)
+	}
+
+	// Test prefix matching
+	tests := []struct {
+		prefix   string
+		expected []string
+	}{
+		{
+			prefix:   "Cit",
+			expected: []string{"City Hardware", "City Market"},
+		},
+		{
+			prefix:   "City H",
+			expected: []string{"City Hardware"},
+		},
+		{
+			prefix:   "Coffee",
+			expected: []string{"Coffee Shop"},
+		},
+		{
+			prefix:   "Gas",
+			expected: []string{"Gas Station"},
+		},
+		{
+			prefix:   "Nonexistent",
+			expected: []string{},
+		},
+		{
+			prefix:   "",
+			expected: []string{"City Hardware", "City Market", "Coffee Shop", "Gas Station"},
+		},
+	}
+
+	for _, test := range tests {
+		result := db.FindPayees(test.prefix)
+		if len(result) != len(test.expected) {
+			t.Errorf("For prefix '%s': expected %d results, got %d", test.prefix, len(test.expected), len(result))
+			continue
+		}
+		for i, expected := range test.expected {
+			if i >= len(result) || result[i] != expected {
+				t.Errorf("For prefix '%s': expected result[%d] = '%s', got '%s'", test.prefix, i, expected, result[i])
+			}
+		}
+	}
+}
+
+func TestFindAccounts(t *testing.T) {
+	// Create mock transactions with varied account structures
+	transactions := []core.Transaction{
+		{
+			Payee: "Super Grocery Store",
+			Postings: []core.Posting{
+				{Account: "Expenses:Food:Groceries", Amount: "85.42"},
+				{Account: "Assets:Checking", Amount: "-85.42"},
+			},
+		},
+		{
+			Payee: "Gas Station",
+			Postings: []core.Posting{
+				{Account: "Expenses:Auto:Gas", Amount: "45.00"},
+				{Account: "Assets:Credit Card", Amount: "-45.00"},
+			},
+		},
+		{
+			Payee: "Coffee Shop",
+			Postings: []core.Posting{
+				{Account: "Expenses:Food:Dining", Amount: "8.50"},
+				{Account: "Assets:Checking", Amount: "-8.50"},
+			},
+		},
+	}
+
+	db, err := NewIntelligenceDB(transactions)
+	if err != nil {
+		t.Fatalf("Failed to create IntelligenceDB: %v", err)
+	}
+
+	// Test account prefix searches
+	tests := []struct {
+		prefix   string
+		expected []string
+	}{
+		{
+			prefix:   "Expenses:Fo",
+			expected: []string{"Expenses:Food:Dining", "Expenses:Food:Groceries"},
+		},
+		{
+			prefix:   "Assets:",
+			expected: []string{"Assets:Checking", "Assets:Credit Card"},
+		},
+		{
+			prefix:   "Expenses:Auto:",
+			expected: []string{"Expenses:Auto:Gas"},
+		},
+		{
+			prefix:   "Nonexistent",
+			expected: []string{},
+		},
+	}
+
+	for _, test := range tests {
+		result := db.FindAccounts(test.prefix)
+		if len(result) != len(test.expected) {
+			t.Errorf("For account prefix '%s': expected %d results, got %d", test.prefix, len(test.expected), len(result))
+			continue
+		}
+		for _, expected := range test.expected {
+			found := false
+			for _, actual := range result {
+				if actual == expected {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("For account prefix '%s': expected to find '%s' in results %v", test.prefix, expected, result)
+			}
+		}
+	}
+}
+
+func TestFindTemplates(t *testing.T) {
+	// Create mock transactions where "City Market" has two transactions with the same template
+	// and one with a different template
+	transactions := []core.Transaction{
+		{
+			Payee: "City Market",
+			Postings: []core.Posting{
+				{Account: "Assets:Checking", Amount: "-85.42"},
+				{Account: "Expenses:Groceries", Amount: "85.42"},
+			},
+		},
+		{
+			Payee: "City Market",
+			Postings: []core.Posting{
+				{Account: "Assets:Checking", Amount: "-125.67"},
+				{Account: "Expenses:Groceries", Amount: "125.67"},
+			},
+		},
+		{
+			Payee: "City Market",
+			Postings: []core.Posting{
+				{Account: "Assets:Credit Card", Amount: "-45.00"},
+				{Account: "Expenses:Alcohol", Amount: "25.00"},
+				{Account: "Expenses:Groceries", Amount: "20.00"},
+			},
+		},
+		{
+			Payee: "Gas Station",
+			Postings: []core.Posting{
+				{Account: "Assets:Credit Card", Amount: "-40.00"},
+				{Account: "Expenses:Auto:Gas", Amount: "40.00"},
+			},
+		},
+	}
+
+	db, err := NewIntelligenceDB(transactions)
+	if err != nil {
+		t.Fatalf("Failed to create IntelligenceDB: %v", err)
+	}
+
+	// Test City Market templates
+	cityMarketTemplates := db.FindTemplates("City Market")
+	if len(cityMarketTemplates) != 2 {
+		t.Errorf("Expected 2 templates for City Market, got %d", len(cityMarketTemplates))
+	}
+
+	if len(cityMarketTemplates) >= 1 {
+		// First template should be the most frequent (frequency 2)
+		firstTemplate := cityMarketTemplates[0]
+		if firstTemplate.Frequency != 2 {
+			t.Errorf("Expected first template frequency to be 2, got %d", firstTemplate.Frequency)
+		}
+
+		// Check that the accounts are correct (sorted: Assets:Checking, Expenses:Groceries)
+		expectedAccounts := []string{"Assets:Checking", "Expenses:Groceries"}
+		if len(firstTemplate.Accounts) != len(expectedAccounts) {
+			t.Errorf("Expected first template to have %d accounts, got %d", len(expectedAccounts), len(firstTemplate.Accounts))
+		} else {
+			for i, expected := range expectedAccounts {
+				if firstTemplate.Accounts[i] != expected {
+					t.Errorf("Expected first template account[%d] = '%s', got '%s'", i, expected, firstTemplate.Accounts[i])
+				}
+			}
+		}
+	}
+
+	if len(cityMarketTemplates) >= 2 {
+		// Second template should have frequency 1
+		secondTemplate := cityMarketTemplates[1]
+		if secondTemplate.Frequency != 1 {
+			t.Errorf("Expected second template frequency to be 1, got %d", secondTemplate.Frequency)
+		}
+	}
+
+	// Test Gas Station templates
+	gasStationTemplates := db.FindTemplates("Gas Station")
+	if len(gasStationTemplates) != 1 {
+		t.Errorf("Expected 1 template for Gas Station, got %d", len(gasStationTemplates))
+	}
+
+	// Test non-existent payee
+	nonExistentTemplates := db.FindTemplates("Nonexistent Payee")
+	if len(nonExistentTemplates) != 0 {
+		t.Errorf("Expected 0 templates for non-existent payee, got %d", len(nonExistentTemplates))
+	}
+}
