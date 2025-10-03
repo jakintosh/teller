@@ -21,6 +21,7 @@ const (
 	statusDuration       = 5 * time.Second
 	statusShortDuration  = 3 * time.Second
 	maxSuggestionDisplay = 5
+	balanceTolerance     = 0.01
 )
 
 type viewState int
@@ -28,6 +29,8 @@ type viewState int
 type confirmKind int
 
 type focusedField int
+
+type sectionType int
 
 type dateSegment int
 
@@ -46,10 +49,13 @@ const (
 const (
 	focusDate focusedField = iota
 	focusPayee
-	focusTotal
-	focusPrimaryAccount
-	focusPostingAccount
-	focusPostingAmount
+	focusSectionAccount
+	focusSectionAmount
+)
+
+const (
+	sectionDebit sectionType = iota
+	sectionCredit
 )
 
 const (
@@ -73,22 +79,22 @@ type Model struct {
 	editingIndex    int
 
 	lastDate      time.Time
-	lastPrimary   string
 	statusMessage string
 	statusExpiry  time.Time
 	err           error
 }
 
 type transactionForm struct {
-	date            dateField
-	payeeInput      textinput.Model
-	totalInput      textinput.Model
-	primaryInput    textinput.Model
-	postings        []postingLine
-	focusedField    focusedField
-	focusedPosting  int
-	remaining       decimal.Decimal
-	headerConfirmed bool
+	date           dateField
+	payeeInput     textinput.Model
+	debitLines     []postingLine
+	creditLines    []postingLine
+	focusedField   focusedField
+	focusedSection sectionType
+	focusedIndex   int
+	remaining      decimal.Decimal
+	debitTotal     decimal.Decimal
+	creditTotal    decimal.Decimal
 }
 
 type postingLine struct {
@@ -111,62 +117,52 @@ func NewModel(db *intelligence.IntelligenceDB, ledgerFilePath string) *Model {
 		currentView:    viewBatch,
 		editingIndex:   -1,
 	}
-	m.resetForm(time.Now(), "")
+	m.resetForm(time.Now())
 	return m
 }
 
 func (m *Model) SetBatch(batch []core.Transaction) {
 	m.batch = append([]core.Transaction(nil), batch...)
-	sort.Slice(m.batch, func(i, j int) bool {
-		return m.batch[i].Date.Before(m.batch[j].Date)
-	})
+	sort.Slice(m.batch, func(i, j int) bool { return m.batch[i].Date.Before(m.batch[j].Date) })
 	if len(m.batch) == 0 {
 		m.cursor = 0
 		m.lastDate = time.Time{}
-		m.lastPrimary = ""
 		return
 	}
 	m.cursor = len(m.batch) - 1
-	last := m.batch[m.cursor]
-	m.lastDate = last.Date
-	if len(last.Postings) > 0 {
-		m.lastPrimary = last.Postings[0].Account
-	}
+	m.lastDate = m.batch[m.cursor].Date
 }
 
-func (m *Model) resetForm(baseDate time.Time, primaryDefault string) {
-	m.form = newTransactionForm(baseDate, primaryDefault)
+func (m *Model) resetForm(baseDate time.Time) {
+	m.form = newTransactionForm(baseDate)
 	m.templateOptions = nil
 	m.templateCursor = 0
 	m.editingIndex = -1
 }
 
-func newTransactionForm(baseDate time.Time, primaryDefault string) transactionForm {
+func newTransactionForm(baseDate time.Time) transactionForm {
 	if baseDate.IsZero() {
 		baseDate = time.Now()
 	}
-
 	date := dateField{}
 	date.setTime(baseDate)
 
 	payee := newTextInput("Payee")
-	total := newTextInput("Total")
-	primary := newTextInput("Primary Account")
-	if primaryDefault != "" {
-		primary.SetValue(primaryDefault)
-	}
 
-	postings := []postingLine{newPostingLine("")}
+	debit := []postingLine{newPostingLine()}
+	credit := []postingLine{newPostingLine()}
 
 	return transactionForm{
 		date:           date,
 		payeeInput:     payee,
-		totalInput:     total,
-		primaryInput:   primary,
-		postings:       postings,
+		debitLines:     debit,
+		creditLines:    credit,
 		focusedField:   focusDate,
-		focusedPosting: 0,
+		focusedSection: sectionDebit,
+		focusedIndex:   0,
 		remaining:      decimal.Zero,
+		debitTotal:     decimal.Zero,
+		creditTotal:    decimal.Zero,
 	}
 }
 
@@ -180,12 +176,10 @@ func newTextInput(placeholder string) textinput.Model {
 	return ti
 }
 
-func newPostingLine(seed string) postingLine {
+func newPostingLine() postingLine {
 	account := newTextInput("Account")
-	if seed != "" {
-		account.SetValue(seed)
-	}
 	amount := newTextInput("Amount")
+	amount.ShowSuggestions = false
 	return postingLine{accountInput: account, amountInput: amount}
 }
 
@@ -346,7 +340,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *Model) View() string {
 	if m.err != nil {
-		return fmt.Sprintf("Error: %v\n\nPress ctrl+c to quit.", m.err)
+		return fmt.Sprintf("Error: %v\n\nPress ctrl+q to quit.", m.err)
 	}
 
 	switch m.currentView {
@@ -380,7 +374,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m *Model) updateBatchView(msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
-	case "ctrl+c":
+	case "ctrl+q", "ctrl+c":
 		return tea.Quit
 	case "up", "k":
 		if m.cursor > 0 {
@@ -409,25 +403,22 @@ func (m *Model) updateBatchView(msg tea.KeyMsg) tea.Cmd {
 }
 
 func (m *Model) updateTransactionView(msg tea.KeyMsg) tea.Cmd {
-	// Date-specific handling before global shortcuts
 	if m.form.focusedField == focusDate {
 		if m.handleDateKey(msg) {
-			m.recalculateRemaining()
+			m.recalculateTotals()
 			return nil
 		}
 	}
 
 	switch msg.String() {
-	case "ctrl+c":
+	case "ctrl+q":
 		return tea.Quit
+	case "ctrl+c":
+		m.confirmTransaction()
+		return nil
 	case "esc":
 		m.cancelTransaction()
 		return nil
-	case "c":
-		if !m.textInputFocused() {
-			m.confirmTransaction()
-			return nil
-		}
 	case "shift+tab":
 		m.evaluateAmountField()
 		m.retreatFocus()
@@ -438,23 +429,26 @@ func (m *Model) updateTransactionView(msg tea.KeyMsg) tea.Cmd {
 			m.advanceFocus()
 		}
 		return nil
-	case "ctrl+n":
-		m.addPostingLine(true)
-		return nil
-	case "b":
-		if m.balanceCurrentPosting() {
-			m.recalculateRemaining()
-		}
-		return nil
 	case "enter":
 		if m.handleEnterKey() {
 			return nil
 		}
+	case "ctrl+n":
+		m.addLine(m.form.focusedSection, true)
+		return nil
+	case "ctrl+d":
+		m.deleteLine(m.form.focusedSection)
+		return nil
+	case "b":
+		if m.balanceCurrentLine() {
+			m.recalculateTotals()
+		}
+		return nil
 	}
 
 	cmd := m.updateFocusedInput(msg)
 	m.refreshSuggestions()
-	m.recalculateRemaining()
+	m.recalculateTotals()
 	return cmd
 }
 
@@ -484,7 +478,7 @@ func (m *Model) handleDateKey(msg tea.KeyMsg) bool {
 }
 
 func (m *Model) cancelTransaction() {
-	m.resetForm(m.defaultDate(), m.lastPrimary)
+	m.resetForm(m.defaultDate())
 	m.currentView = viewBatch
 }
 
@@ -499,14 +493,11 @@ func (m *Model) defaultDate() time.Time {
 }
 
 func (m *Model) evaluateAmountField() {
-	switch m.form.focusedField {
-	case focusTotal:
-		m.evaluateInput(&m.form.totalInput)
-	case focusPostingAmount:
-		if m.form.focusedPosting >= 0 && m.form.focusedPosting < len(m.form.postings) {
-			posting := &m.form.postings[m.form.focusedPosting]
-			m.evaluateInput(&posting.amountInput)
-		}
+	if m.form.focusedField != focusSectionAmount {
+		return
+	}
+	if line := m.currentLine(); line != nil {
+		m.evaluateInput(&line.amountInput)
 	}
 }
 
@@ -532,32 +523,28 @@ func (m *Model) advanceFocus() {
 		m.form.payeeInput.Focus()
 	case focusPayee:
 		m.form.payeeInput.Blur()
-		m.form.focusedField = focusTotal
-		m.form.totalInput.Focus()
-	case focusTotal:
-		m.form.totalInput.Blur()
-		m.form.focusedField = focusPrimaryAccount
-		m.form.primaryInput.Focus()
-	case focusPrimaryAccount:
-		if m.finalizeHeader(false) {
-			return
+		m.focusSection(sectionDebit, 0, focusSectionAccount)
+	case focusSectionAccount:
+		if line := m.currentLine(); line != nil {
+			line.accountInput.Blur()
+			line.amountInput.Focus()
+			m.form.focusedField = focusSectionAmount
 		}
-	case focusPostingAccount:
-		posting := &m.form.postings[m.form.focusedPosting]
-		posting.accountInput.Blur()
-		m.form.focusedField = focusPostingAmount
-		posting.amountInput.Focus()
-	case focusPostingAmount:
-		posting := &m.form.postings[m.form.focusedPosting]
-		posting.amountInput.Blur()
-		if m.form.focusedPosting < len(m.form.postings)-1 {
-			m.form.focusedPosting++
+	case focusSectionAmount:
+		if m.form.focusedSection == sectionDebit {
+			if m.form.focusedIndex < len(m.form.debitLines)-1 {
+				m.focusSection(sectionDebit, m.form.focusedIndex+1, focusSectionAccount)
+			} else {
+				m.focusSection(sectionCredit, 0, focusSectionAccount)
+			}
 		} else {
-			m.addPostingLine(false)
-			m.form.focusedPosting = len(m.form.postings) - 1
+			if m.form.focusedIndex < len(m.form.creditLines)-1 {
+				m.focusSection(sectionCredit, m.form.focusedIndex+1, focusSectionAccount)
+			} else {
+				m.addLine(sectionCredit, false)
+				m.focusSection(sectionCredit, len(m.form.creditLines)-1, focusSectionAccount)
+			}
 		}
-		m.form.focusedField = focusPostingAccount
-		m.form.postings[m.form.focusedPosting].accountInput.Focus()
 	}
 	m.refreshSuggestions()
 }
@@ -567,100 +554,123 @@ func (m *Model) retreatFocus() {
 	case focusPayee:
 		m.form.payeeInput.Blur()
 		m.form.focusedField = focusDate
-	case focusTotal:
-		m.form.totalInput.Blur()
-		m.form.focusedField = focusPayee
-		m.form.payeeInput.Focus()
-	case focusPrimaryAccount:
-		m.form.primaryInput.Blur()
-		m.form.focusedField = focusTotal
-		m.form.totalInput.Focus()
-	case focusPostingAccount:
-		if m.form.focusedPosting == 0 {
-			m.form.focusedField = focusPrimaryAccount
-			m.form.primaryInput.Focus()
+	case focusSectionAccount:
+		if m.form.focusedSection == sectionDebit {
+			if m.form.focusedIndex == 0 {
+				m.form.focusedField = focusPayee
+				m.form.payeeInput.Focus()
+			} else {
+				m.focusSection(sectionDebit, m.form.focusedIndex-1, focusSectionAmount)
+			}
 		} else {
-			current := &m.form.postings[m.form.focusedPosting]
-			current.accountInput.Blur()
-			m.form.focusedPosting--
-			m.form.focusedField = focusPostingAmount
-			m.form.postings[m.form.focusedPosting].amountInput.Focus()
+			if m.form.focusedIndex == 0 {
+				if len(m.form.debitLines) > 0 {
+					m.focusSection(sectionDebit, len(m.form.debitLines)-1, focusSectionAmount)
+				} else {
+					m.form.focusedField = focusPayee
+					m.form.payeeInput.Focus()
+				}
+			} else {
+				m.focusSection(sectionCredit, m.form.focusedIndex-1, focusSectionAmount)
+			}
 		}
-	case focusPostingAmount:
-		posting := &m.form.postings[m.form.focusedPosting]
-		posting.amountInput.Blur()
-		m.form.focusedField = focusPostingAccount
-		posting.accountInput.Focus()
+	case focusSectionAmount:
+		m.focusSection(m.form.focusedSection, m.form.focusedIndex, focusSectionAccount)
 	default:
 		m.form.focusedField = focusDate
 	}
 	m.refreshSuggestions()
 }
 
-func (m *Model) finalizeHeader(fromEnter bool) bool {
-	if m.form.payeeInput.Value() == "" {
-		m.setStatus("Payee is required", statusShortDuration)
-		m.form.payeeInput.Focus()
-		m.form.focusedField = focusPayee
-		return false
+func (m *Model) focusSection(section sectionType, index int, field focusedField) {
+	if section == sectionDebit {
+		if index >= len(m.form.debitLines) {
+			index = len(m.form.debitLines) - 1
+		}
+	} else {
+		if index >= len(m.form.creditLines) {
+			index = len(m.form.creditLines) - 1
+		}
 	}
-
-	if !m.evaluateInput(&m.form.totalInput) {
-		m.form.focusedField = focusTotal
-		m.form.totalInput.Focus()
-		return false
+	if index < 0 {
+		index = 0
 	}
-	if strings.TrimSpace(m.form.totalInput.Value()) == "" {
-		m.setStatus("Total amount is required", statusShortDuration)
-		m.form.focusedField = focusTotal
-		m.form.totalInput.Focus()
-		return false
+	m.blurCurrent()
+	m.form.focusedSection = section
+	m.form.focusedIndex = index
+	m.form.focusedField = field
+	if line := m.currentLine(); line != nil {
+		if field == focusSectionAccount {
+			line.accountInput.Focus()
+		} else {
+			line.amountInput.Focus()
+		}
 	}
-
-	if strings.TrimSpace(m.form.primaryInput.Value()) == "" {
-		m.setStatus("Primary account is required", statusShortDuration)
-		m.form.focusedField = focusPrimaryAccount
-		m.form.primaryInput.Focus()
-		return false
-	}
-
-	m.form.primaryInput.Blur()
-	m.form.headerConfirmed = true
-
-	payee := m.form.payeeInput.Value()
-	m.templateOptions = m.db.FindTemplates(payee)
-	if len(m.templateOptions) > 0 {
-		m.templateCursor = 0
-		m.currentView = viewTemplate
-		return true
-	}
-
-	if len(m.form.postings) == 0 {
-		m.addPostingLine(false)
-	}
-	m.form.focusedField = focusPostingAccount
-	m.form.focusedPosting = 0
-	m.form.postings[0].accountInput.Focus()
-	m.refreshSuggestions()
-	m.recalculateRemaining()
-	return true
 }
 
-func (m *Model) currentTextInput() *textinput.Model {
+func (m *Model) blurCurrent() {
+	if line := m.currentLine(); line != nil {
+		line.accountInput.Blur()
+		line.amountInput.Blur()
+	}
+	if m.form.focusedField == focusPayee {
+		m.form.payeeInput.Blur()
+	}
+}
+
+func (m *Model) currentLine() *postingLine {
+	switch m.form.focusedSection {
+	case sectionDebit:
+		if m.form.focusedIndex >= 0 && m.form.focusedIndex < len(m.form.debitLines) {
+			return &m.form.debitLines[m.form.focusedIndex]
+		}
+	case sectionCredit:
+		if m.form.focusedIndex >= 0 && m.form.focusedIndex < len(m.form.creditLines) {
+			return &m.form.creditLines[m.form.focusedIndex]
+		}
+	}
+	return nil
+}
+
+func (m *Model) handleEnterKey() bool {
+	switch m.form.focusedField {
+	case focusDate:
+		m.advanceFocus()
+		return true
+	case focusPayee:
+		m.advanceFocus()
+		return true
+	case focusSectionAccount:
+		m.advanceFocus()
+		return true
+	case focusSectionAmount:
+		if line := m.currentLine(); line != nil {
+			if m.evaluateInput(&line.amountInput) {
+				m.advanceFocus()
+			}
+		}
+		return true
+	}
+	return false
+}
+
+func (m *Model) updateFocusedInput(msg tea.KeyMsg) tea.Cmd {
 	switch m.form.focusedField {
 	case focusPayee:
-		return &m.form.payeeInput
-	case focusTotal:
-		return &m.form.totalInput
-	case focusPrimaryAccount:
-		return &m.form.primaryInput
-	case focusPostingAccount:
-		if m.form.focusedPosting >= 0 && m.form.focusedPosting < len(m.form.postings) {
-			return &m.form.postings[m.form.focusedPosting].accountInput
+		var cmd tea.Cmd
+		m.form.payeeInput, cmd = m.form.payeeInput.Update(msg)
+		return cmd
+	case focusSectionAccount:
+		if line := m.currentLine(); line != nil {
+			var cmd tea.Cmd
+			line.accountInput, cmd = line.accountInput.Update(msg)
+			return cmd
 		}
-	case focusPostingAmount:
-		if m.form.focusedPosting >= 0 && m.form.focusedPosting < len(m.form.postings) {
-			return &m.form.postings[m.form.focusedPosting].amountInput
+	case focusSectionAmount:
+		if line := m.currentLine(); line != nil {
+			var cmd tea.Cmd
+			line.amountInput, cmd = line.amountInput.Update(msg)
+			return cmd
 		}
 	}
 	return nil
@@ -681,19 +691,71 @@ func (m *Model) tryAcceptSuggestion() bool {
 	input.SetValue(suggestion)
 	input.CursorEnd()
 	m.refreshSuggestions()
-	if m.form.focusedField == focusPayee {
-		// Refresh template candidates immediately when payee chosen
+	if input == &m.form.payeeInput {
 		m.templateOptions = m.db.FindTemplates(suggestion)
 	}
 	return true
 }
 
-func (m *Model) addPostingLine(cloneCategory bool) {
-	seed := ""
-	if cloneCategory && m.form.focusedPosting >= 0 && m.form.focusedPosting < len(m.form.postings) {
-		seed = categorySeed(m.form.postings[m.form.focusedPosting].accountInput.Value())
+func (m *Model) currentTextInput() *textinput.Model {
+	switch m.form.focusedField {
+	case focusPayee:
+		return &m.form.payeeInput
+	case focusSectionAccount:
+		if line := m.currentLine(); line != nil {
+			return &line.accountInput
+		}
+	case focusSectionAmount:
+		if line := m.currentLine(); line != nil {
+			return &line.amountInput
+		}
 	}
-	m.form.postings = append(m.form.postings, newPostingLine(seed))
+	return nil
+}
+
+func (m *Model) addLine(section sectionType, cloneCategory bool) {
+	var lines *[]postingLine
+	switch section {
+	case sectionDebit:
+		lines = &m.form.debitLines
+	case sectionCredit:
+		lines = &m.form.creditLines
+	}
+	seed := ""
+	if cloneCategory {
+		if line := m.currentLine(); line != nil {
+			seed = categorySeed(line.accountInput.Value())
+		}
+	}
+	newLine := newPostingLine()
+	if seed != "" {
+		newLine.accountInput.SetValue(seed)
+	}
+	*lines = append(*lines, newLine)
+}
+
+func (m *Model) deleteLine(section sectionType) {
+	var lines *[]postingLine
+	switch section {
+	case sectionDebit:
+		lines = &m.form.debitLines
+	case sectionCredit:
+		lines = &m.form.creditLines
+	}
+	if lines == nil || len(*lines) <= 1 {
+		m.setStatus("At least one line required", statusShortDuration)
+		return
+	}
+	idx := m.form.focusedIndex
+	if idx < 0 || idx >= len(*lines) {
+		return
+	}
+	*lines = append((*lines)[:idx], (*lines)[idx+1:]...)
+	if idx >= len(*lines) {
+		idx = len(*lines) - 1
+	}
+	m.focusSection(section, idx, focusSectionAccount)
+	m.recalculateTotals()
 }
 
 func categorySeed(value string) string {
@@ -711,84 +773,475 @@ func categorySeed(value string) string {
 	return value[:idx+1]
 }
 
-func (m *Model) balanceCurrentPosting() bool {
-	if m.form.focusedField != focusPostingAmount {
+func (m *Model) balanceCurrentLine() bool {
+	if m.form.focusedField != focusSectionAmount || m.form.focusedSection != sectionCredit {
 		return false
 	}
-	emptyIndex := -1
-	for i, posting := range m.form.postings {
-		if strings.TrimSpace(posting.amountInput.Value()) == "" {
-			if emptyIndex != -1 {
-				return false
-			}
-			emptyIndex = i
+	if line := m.currentLine(); line != nil {
+		difference := m.form.debitTotal.Sub(m.form.creditTotal.Sub(lineAmount(line)))
+		if difference.IsZero() {
+			return false
 		}
-	}
-	if emptyIndex == -1 || emptyIndex != m.form.focusedPosting {
-		return false
-	}
-	if m.form.remaining.IsZero() {
-		return false
-	}
-	posting := &m.form.postings[m.form.focusedPosting]
-	posting.amountInput.SetValue(m.form.remaining.StringFixed(2))
-	posting.amountInput.CursorEnd()
-	return true
-}
-
-func (m *Model) handleEnterKey() bool {
-	switch m.form.focusedField {
-	case focusDate:
-		m.advanceFocus()
-		return true
-	case focusPayee:
-		m.advanceFocus()
-		return true
-	case focusTotal:
-		if m.evaluateInput(&m.form.totalInput) {
-			m.advanceFocus()
-		}
-		return true
-	case focusPrimaryAccount:
-		m.finalizeHeader(true)
-		return true
-	case focusPostingAccount:
-		m.advanceFocus()
-		return true
-	case focusPostingAmount:
-		if m.evaluateInput(&m.form.postings[m.form.focusedPosting].amountInput) {
-			m.advanceFocus()
-		}
+		line.amountInput.SetValue(difference.StringFixed(2))
+		line.amountInput.CursorEnd()
 		return true
 	}
 	return false
 }
 
-func (m *Model) updateFocusedInput(msg tea.KeyMsg) tea.Cmd {
-	input := m.currentTextInput()
-	if input == nil {
+func lineAmount(line *postingLine) decimal.Decimal {
+	value := strings.TrimSpace(line.amountInput.Value())
+	if value == "" {
+		return decimal.Zero
+	}
+	amount, err := decimal.NewFromString(value)
+	if err != nil {
+		return decimal.Zero
+	}
+	return amount
+}
+
+func (m *Model) recalculateTotals() {
+	debit := decimal.Zero
+	for i := range m.form.debitLines {
+		debit = debit.Add(lineAmount(&m.form.debitLines[i]))
+	}
+	credit := decimal.Zero
+	for i := range m.form.creditLines {
+		credit = credit.Add(lineAmount(&m.form.creditLines[i]))
+	}
+	m.form.debitTotal = debit
+	m.form.creditTotal = credit
+	m.form.remaining = debit.Sub(credit)
+}
+
+func (m *Model) setStatus(message string, duration time.Duration) {
+	m.statusMessage = message
+	m.statusExpiry = time.Now().Add(duration)
+}
+
+func (m *Model) startNewTransaction() {
+	m.resetForm(m.defaultDate())
+	m.currentView = viewTransaction
+}
+
+func (m *Model) startEditingTransaction(index int) {
+	if index < 0 || index >= len(m.batch) {
+		return
+	}
+	tx := m.batch[index]
+	m.resetForm(tx.Date)
+	m.editingIndex = index
+	m.form.payeeInput.SetValue(tx.Payee)
+	m.form.payeeInput.CursorEnd()
+
+	m.form.debitLines = nil
+	m.form.creditLines = nil
+	for _, posting := range tx.Postings {
+		amount, err := decimal.NewFromString(posting.Amount)
+		if err != nil {
+			continue
+		}
+		line := newPostingLine()
+		line.accountInput.SetValue(posting.Account)
+		line.accountInput.CursorEnd()
+		line.amountInput.SetValue(amount.Abs().StringFixed(2))
+		line.amountInput.CursorEnd()
+		if amount.Sign() >= 0 {
+			m.form.debitLines = append(m.form.debitLines, line)
+		} else {
+			m.form.creditLines = append(m.form.creditLines, line)
+		}
+	}
+	if len(m.form.debitLines) == 0 {
+		m.form.debitLines = []postingLine{newPostingLine()}
+	}
+	if len(m.form.creditLines) == 0 {
+		m.form.creditLines = []postingLine{newPostingLine()}
+	}
+	m.recalculateTotals()
+	m.focusSection(sectionDebit, 0, focusSectionAccount)
+	m.currentView = viewTransaction
+}
+
+func (m *Model) openConfirm(kind confirmKind) {
+	m.pendingConfirm = kind
+	m.currentView = viewConfirm
+}
+
+func (m *Model) updateTemplateView(msg tea.KeyMsg) tea.Cmd {
+	if len(m.templateOptions) == 0 {
+		m.currentView = viewTransaction
 		return nil
 	}
-	updated, cmd := input.Update(msg)
-	*input = updated
-	return cmd
+	switch msg.String() {
+	case "up", "k":
+		if m.templateCursor > 0 {
+			m.templateCursor--
+		}
+	case "down", "j":
+		if m.templateCursor < len(m.templateOptions)-1 {
+			m.templateCursor++
+		}
+	case "enter":
+		m.applyTemplate(m.templateOptions[m.templateCursor])
+	case "esc":
+		m.skipTemplate()
+	}
+	return nil
+}
+
+func (m *Model) applyTemplate(record intelligence.TemplateRecord) {
+	m.form.debitLines = nil
+	for _, account := range record.DebitAccounts {
+		line := newPostingLine()
+		line.accountInput.SetValue(account)
+		line.accountInput.CursorEnd()
+		m.form.debitLines = append(m.form.debitLines, line)
+	}
+	if len(m.form.debitLines) == 0 {
+		m.form.debitLines = []postingLine{newPostingLine()}
+	}
+
+	m.form.creditLines = nil
+	for _, account := range record.CreditAccounts {
+		line := newPostingLine()
+		line.accountInput.SetValue(account)
+		line.accountInput.CursorEnd()
+		m.form.creditLines = append(m.form.creditLines, line)
+	}
+	if len(m.form.creditLines) == 0 {
+		m.form.creditLines = []postingLine{newPostingLine()}
+	}
+
+	m.templateOptions = nil
+	m.currentView = viewTransaction
+	m.focusSection(sectionDebit, 0, focusSectionAccount)
+	m.recalculateTotals()
+}
+
+func (m *Model) skipTemplate() {
+	m.templateOptions = nil
+	m.currentView = viewTransaction
+	m.focusSection(sectionDebit, 0, focusSectionAccount)
+	m.recalculateTotals()
+}
+
+func (m *Model) updateConfirmView(msg tea.KeyMsg) tea.Cmd {
+	switch msg.String() {
+	case "ctrl+q":
+		return tea.Quit
+	case "enter":
+		switch m.pendingConfirm {
+		case confirmWrite:
+			if err := m.writeTransactionsToLedger(); err != nil {
+				m.setStatus(fmt.Sprintf("Failed to write: %v", err), statusDuration)
+			} else {
+				count := len(m.batch)
+				m.setStatus(fmt.Sprintf("Wrote %d transaction(s) to %s", count, m.ledgerFilePath), statusShortDuration)
+				m.batch = nil
+				m.cursor = 0
+				if err := session.DeleteSession(); err != nil {
+					m.setStatus(fmt.Sprintf("Ledger written but session cleanup failed: %v", err), statusDuration)
+				}
+			}
+			m.currentView = viewBatch
+		case confirmQuit:
+			if err := session.DeleteSession(); err != nil {
+				m.setStatus(fmt.Sprintf("Failed to clear session: %v", err), statusDuration)
+			}
+			return tea.Quit
+		}
+	case "esc":
+		m.currentView = viewBatch
+	}
+	return nil
+}
+
+func (m *Model) confirmTransaction() bool {
+	date := m.form.date.time()
+	if date.IsZero() {
+		m.setStatus("Invalid date", statusShortDuration)
+		m.form.focusedField = focusDate
+		return false
+	}
+	if strings.TrimSpace(m.form.payeeInput.Value()) == "" {
+		m.setStatus("Payee is required", statusShortDuration)
+		m.form.focusedField = focusPayee
+		m.form.payeeInput.Focus()
+		return false
+	}
+
+	for i := range m.form.debitLines {
+		_ = m.evaluateInput(&m.form.debitLines[i].amountInput)
+	}
+	for i := range m.form.creditLines {
+		_ = m.evaluateInput(&m.form.creditLines[i].amountInput)
+	}
+	m.recalculateTotals()
+
+	if len(m.form.debitLines) == 0 || len(m.form.creditLines) == 0 {
+		m.setStatus("At least one debit and credit leg required", statusShortDuration)
+		return false
+	}
+	if m.form.debitTotal.IsZero() || m.form.creditTotal.IsZero() {
+		m.setStatus("Amounts required in both sections", statusShortDuration)
+		return false
+	}
+
+	difference := m.form.debitTotal.Sub(m.form.creditTotal).Abs()
+	if difference.GreaterThan(decimal.NewFromFloat(balanceTolerance)) {
+		m.setStatus("Debits and credits must balance", statusDuration)
+		return false
+	}
+
+	postings := make([]core.Posting, 0, len(m.form.debitLines)+len(m.form.creditLines))
+	for i := range m.form.debitLines {
+		line := &m.form.debitLines[i]
+		account := strings.TrimSpace(line.accountInput.Value())
+		amount := lineAmount(line)
+		if account == "" || amount.IsZero() {
+			continue
+		}
+		postings = append(postings, core.Posting{
+			Account: account,
+			Amount:  amount.StringFixed(2),
+		})
+	}
+	for i := range m.form.creditLines {
+		line := &m.form.creditLines[i]
+		account := strings.TrimSpace(line.accountInput.Value())
+		amount := lineAmount(line)
+		if account == "" || amount.IsZero() {
+			continue
+		}
+		postings = append(postings, core.Posting{
+			Account: account,
+			Amount:  amount.Neg().StringFixed(2),
+		})
+	}
+
+	if len(postings) < 2 {
+		m.setStatus("Incomplete transaction", statusShortDuration)
+		return false
+	}
+
+	tx := core.Transaction{
+		Date:     date,
+		Payee:    m.form.payeeInput.Value(),
+		Postings: postings,
+	}
+
+	wasEdit := m.editingIndex >= 0 && m.editingIndex < len(m.batch)
+	if wasEdit {
+		m.batch[m.editingIndex] = tx
+	} else {
+		m.batch = append(m.batch, tx)
+	}
+
+	sort.SliceStable(m.batch, func(i, j int) bool {
+		if m.batch[i].Date.Equal(m.batch[j].Date) {
+			return m.batch[i].Payee < m.batch[j].Payee
+		}
+		return m.batch[i].Date.Before(m.batch[j].Date)
+	})
+
+	m.cursor = m.findTransactionIndex(tx)
+	if err := session.SaveBatch(m.batch); err != nil {
+		m.setStatus(fmt.Sprintf("Saved but session write failed: %v", err), statusDuration)
+	} else {
+		action := "added"
+		if wasEdit {
+			action = "updated"
+		}
+		m.setStatus(fmt.Sprintf("Transaction %s (%d total)", action, len(m.batch)), statusShortDuration)
+	}
+
+	m.lastDate = date
+	m.resetForm(date)
+	m.currentView = viewBatch
+	return true
+}
+
+func (m *Model) findTransactionIndex(tx core.Transaction) int {
+	for i, candidate := range m.batch {
+		if candidate.Date.Equal(tx.Date) && candidate.Payee == tx.Payee && len(candidate.Postings) == len(tx.Postings) {
+			match := true
+			for j := range candidate.Postings {
+				if candidate.Postings[j] != tx.Postings[j] {
+					match = false
+					break
+				}
+			}
+			if match {
+				return i
+			}
+		}
+	}
+	return len(m.batch) - 1
+}
+
+func (m *Model) renderBatchView() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "-- Batch Summary (%d transactions) --\n\n", len(m.batch))
+	if len(m.batch) == 0 {
+		b.WriteString("No transactions in current batch.\n\n")
+	} else {
+		for i, tx := range m.batch {
+			cursor := " "
+			if i == m.cursor {
+				cursor = ">"
+			}
+			payee := tx.Payee
+			if len(payee) > 28 {
+				payee = payee[:25] + "..."
+			}
+			primary := ""
+			if len(tx.Postings) > 0 {
+				primary = tx.Postings[0].Account
+				parts := strings.Split(primary, ":")
+				primary = parts[len(parts)-1]
+			}
+			fmt.Fprintf(&b, "%s %s %-28s (%s)\n", cursor, tx.Date.Format("2006-01-02"), payee, primary)
+		}
+		b.WriteString("\n")
+	}
+	if msg := m.statusLine(); msg != "" {
+		fmt.Fprintf(&b, "%s\n\n", msg)
+	}
+	b.WriteString("[n]ew  [e]dit  [w]rite  [q]uit  [enter]edit selected")
+	return b.String()
+}
+
+func (m *Model) renderTransactionView() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "-- Transaction Entry -- Remaining: $%s --\n\n", m.form.remaining.StringFixed(2))
+
+	fmt.Fprintf(&b, "Date    %s\n", m.form.date.display(m.form.focusedField == focusDate))
+	fmt.Fprintf(&b, "Payee   %s", m.form.payeeInput.View())
+	if m.form.focusedField == focusPayee {
+		b.WriteString(renderSuggestionList(m.form.payeeInput))
+	}
+	b.WriteString("\n\n")
+
+	fmt.Fprintf(&b, "Debits   (total %s)\n", m.form.debitTotal.StringFixed(2))
+	for i, line := range m.form.debitLines {
+		cursor := " "
+		if m.form.focusedSection == sectionDebit && m.form.focusedIndex == i {
+			cursor = ">"
+		}
+		fmt.Fprintf(&b, "%s [%s] [%s]", cursor, line.accountInput.View(), line.amountInput.View())
+		if m.form.focusedSection == sectionDebit && m.form.focusedIndex == i && m.form.focusedField == focusSectionAccount {
+			b.WriteString(renderSuggestionList(line.accountInput))
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
+
+	fmt.Fprintf(&b, "Credits  (total %s)\n", m.form.creditTotal.StringFixed(2))
+	for i, line := range m.form.creditLines {
+		cursor := " "
+		if m.form.focusedSection == sectionCredit && m.form.focusedIndex == i {
+			cursor = ">"
+		}
+		fmt.Fprintf(&b, "%s [%s] [%s]", cursor, line.accountInput.View(), line.amountInput.View())
+		if m.form.focusedSection == sectionCredit && m.form.focusedIndex == i && m.form.focusedField == focusSectionAccount {
+			b.WriteString(renderSuggestionList(line.accountInput))
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
+
+	if msg := m.statusLine(); msg != "" {
+		fmt.Fprintf(&b, "%s\n\n", msg)
+	}
+
+	help := "[tab]next [shift+tab]prev [ctrl+n]add line [ctrl+d]delete line [b]alance [ctrl+c]confirm [esc]cancel [ctrl+q]quit"
+	b.WriteString(help)
+	return b.String()
+}
+
+func (m *Model) renderTemplateView() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "-- Templates for %s --\n\n", m.form.payeeInput.Value())
+	for i, tpl := range m.templateOptions {
+		cursor := " "
+		if i == m.templateCursor {
+			cursor = ">"
+		}
+		fmt.Fprintf(&b, "%s %d. Debit: %s | Credit: %s (used %d times)\n",
+			cursor,
+			i+1,
+			strings.Join(tpl.DebitAccounts, ", "),
+			strings.Join(tpl.CreditAccounts, ", "),
+			tpl.Frequency,
+		)
+	}
+	b.WriteString("\n[enter]apply  [esc]skip")
+	return b.String()
+}
+
+func (m *Model) renderConfirmView() string {
+	var b strings.Builder
+	switch m.pendingConfirm {
+	case confirmWrite:
+		fmt.Fprintf(&b, "Write %d transaction(s) to %s?\n\n", len(m.batch), m.ledgerFilePath)
+	case confirmQuit:
+		if len(m.batch) > 0 {
+			fmt.Fprintf(&b, "Quit without writing %d pending transaction(s)?\n\n", len(m.batch))
+		} else {
+			b.WriteString("Quit the application?\n\n")
+		}
+	}
+	b.WriteString("[enter]confirm  [esc]cancel  [ctrl+q]quit immediately")
+	return b.String()
+}
+
+func (m *Model) statusLine() string {
+	if m.statusMessage == "" {
+		return ""
+	}
+	if !m.statusExpiry.IsZero() && time.Now().After(m.statusExpiry) {
+		return ""
+	}
+	return m.statusMessage
+}
+
+func renderSuggestionList(input textinput.Model) string {
+	matches := input.MatchedSuggestions()
+	if len(matches) <= 1 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("\n")
+	display := len(matches)
+	if display > maxSuggestionDisplay {
+		display = maxSuggestionDisplay
+	}
+	for i := 0; i < display; i++ {
+		cursor := " "
+		if i == input.CurrentSuggestionIndex() {
+			cursor = ">"
+		}
+		fmt.Fprintf(&b, "      %s %s\n", cursor, matches[i])
+	}
+	if len(matches) > display {
+		fmt.Fprintf(&b, "      ... and %d more\n", len(matches)-display)
+	}
+	return b.String()
 }
 
 func (m *Model) refreshSuggestions() {
 	switch m.form.focusedField {
 	case focusPayee:
 		m.form.payeeInput.SetSuggestions(m.db.FindPayees(m.form.payeeInput.Value()))
-	case focusPrimaryAccount:
-		m.form.primaryInput.SetSuggestions(m.accountSuggestions(m.form.primaryInput.Value()))
-	case focusPostingAccount:
-		if m.form.focusedPosting >= 0 && m.form.focusedPosting < len(m.form.postings) {
-			posting := &m.form.postings[m.form.focusedPosting]
-			posting.accountInput.SetSuggestions(m.accountSuggestions(posting.accountInput.Value()))
+	case focusSectionAccount:
+		if line := m.currentLine(); line != nil {
+			line.accountInput.SetSuggestions(m.accountSuggestions(line.accountInput.Value()))
 		}
-	case focusPostingAmount:
-		if m.form.focusedPosting >= 0 && m.form.focusedPosting < len(m.form.postings) {
-			posting := &m.form.postings[m.form.focusedPosting]
-			posting.amountInput.SetSuggestions(nil)
+	case focusSectionAmount:
+		if line := m.currentLine(); line != nil {
+			line.amountInput.SetSuggestions(nil)
 		}
 	}
 }
@@ -818,23 +1271,20 @@ func (m *Model) accountSuggestions(prefix string) []string {
 
 func nextHierarchicalSuggestion(prefix, account string) string {
 	if prefix == "" {
-		segments := strings.Split(account, ":")
-		if len(segments) > 0 {
-			return segments[0]
+		parts := strings.Split(account, ":")
+		if len(parts) > 0 {
+			return parts[0]
 		}
 		return account
 	}
-
 	lowerPrefix := strings.ToLower(prefix)
 	lowerAccount := strings.ToLower(account)
 	if !strings.HasPrefix(lowerAccount, lowerPrefix) {
 		return ""
 	}
-
 	if len(account) == len(prefix) {
 		return account
 	}
-
 	if strings.HasSuffix(prefix, ":") {
 		remainder := account[len(prefix):]
 		idx := strings.IndexRune(remainder, ':')
@@ -843,390 +1293,33 @@ func nextHierarchicalSuggestion(prefix, account string) string {
 		}
 		return account[:len(prefix)+idx]
 	}
-
 	prefixSegments := strings.Split(prefix, ":")
 	accountSegments := strings.Split(account, ":")
 	if len(prefixSegments) > len(accountSegments) {
 		return account
 	}
-
 	for i := 0; i < len(prefixSegments)-1; i++ {
 		if !strings.EqualFold(prefixSegments[i], accountSegments[i]) {
 			return ""
 		}
 	}
-
 	lastPrefix := prefixSegments[len(prefixSegments)-1]
 	accountSegment := accountSegments[len(prefixSegments)-1]
 	if !strings.HasPrefix(strings.ToLower(accountSegment), strings.ToLower(lastPrefix)) {
 		return ""
 	}
-
 	return strings.Join(accountSegments[:len(prefixSegments)], ":")
 }
 
-func (m *Model) recalculateRemaining() {
-	total := decimal.Zero
-	totalStr := strings.TrimSpace(m.form.totalInput.Value())
-	if totalStr != "" {
-		if value, err := decimal.NewFromString(totalStr); err == nil {
-			total = value
-		}
-	}
-
-	allocated := decimal.Zero
-	for _, posting := range m.form.postings {
-		amountStr := strings.TrimSpace(posting.amountInput.Value())
-		if amountStr == "" {
-			continue
-		}
-		if value, err := decimal.NewFromString(amountStr); err == nil {
-			allocated = allocated.Add(value)
-		}
-	}
-
-	remaining := total.Sub(allocated)
-
-	if m.form.headerConfirmed && len(m.form.postings) > 0 {
-		first := &m.form.postings[0]
-		if strings.TrimSpace(first.amountInput.Value()) == "" && !total.IsZero() {
-			first.amountInput.SetValue(remaining.StringFixed(2))
-			first.amountInput.CursorEnd()
-			allocated = allocated.Add(remaining)
-			remaining = total.Sub(allocated)
-		}
-	}
-
-	m.form.remaining = remaining
-}
-func (m *Model) setStatus(message string, duration time.Duration) {
-	m.statusMessage = message
-	m.statusExpiry = time.Now().Add(duration)
-}
-
-func (m *Model) startNewTransaction() {
-	m.resetForm(m.defaultDate(), m.lastPrimary)
-	m.currentView = viewTransaction
-}
-
-func (m *Model) startEditingTransaction(index int) {
-	if index < 0 || index >= len(m.batch) {
-		return
-	}
-	tx := m.batch[index]
-	primary := ""
-	if len(tx.Postings) > 0 {
-		primary = tx.Postings[0].Account
-	}
-	m.resetForm(tx.Date, primary)
-	m.editingIndex = index
-	m.form.headerConfirmed = true
-	m.form.payeeInput.SetValue(tx.Payee)
-	m.form.payeeInput.CursorEnd()
-
-	if len(tx.Postings) > 0 {
-		total, err := decimal.NewFromString(tx.Postings[0].Amount)
-		if err == nil {
-			m.form.totalInput.SetValue(total.Abs().StringFixed(2))
-		}
-	}
-	m.form.totalInput.CursorEnd()
-	m.form.primaryInput.CursorEnd()
-
-	// Build postings excluding primary
-	m.form.postings = nil
-	for i, posting := range tx.Postings {
-		if i == 0 {
-			continue
-		}
-		line := newPostingLine("")
-		line.accountInput.SetValue(posting.Account)
-		line.accountInput.CursorEnd()
-		line.amountInput.SetValue(posting.Amount)
-		line.amountInput.CursorEnd()
-		m.form.postings = append(m.form.postings, line)
-	}
-	if len(m.form.postings) == 0 {
-		m.form.postings = []postingLine{newPostingLine("")}
-	}
-
-	m.recalculateRemaining()
-	m.form.focusedField = focusDate
-	m.form.focusedPosting = 0
-	m.currentView = viewTransaction
-	m.refreshSuggestions()
-}
-
-func (m *Model) openConfirm(kind confirmKind) {
-	m.pendingConfirm = kind
-	m.currentView = viewConfirm
-}
-
-func (m *Model) updateTemplateView(msg tea.KeyMsg) tea.Cmd {
-	if len(m.templateOptions) == 0 {
-		m.currentView = viewTransaction
-		return nil
-	}
-
-	switch msg.String() {
-	case "up", "k":
-		if m.templateCursor > 0 {
-			m.templateCursor--
-		}
-	case "down", "j":
-		if m.templateCursor < len(m.templateOptions)-1 {
-			m.templateCursor++
-		}
-	case "enter":
-		m.applyTemplate(m.templateOptions[m.templateCursor])
-		return nil
-	case "esc":
-		m.skipTemplate()
-	}
-	return nil
-}
-
-func (m *Model) applyTemplate(record intelligence.TemplateRecord) {
-	primary := strings.TrimSpace(m.form.primaryInput.Value())
-	postings := make([]postingLine, 0, len(record.Accounts))
-	for _, account := range record.Accounts {
-		if strings.EqualFold(strings.TrimSpace(account), primary) {
-			continue
-		}
-		line := newPostingLine("")
-		line.accountInput.SetValue(account)
-		line.accountInput.CursorEnd()
-		postings = append(postings, line)
-	}
-	if len(postings) == 0 {
-		postings = []postingLine{newPostingLine("")}
-	}
-	m.form.postings = postings
-	m.templateOptions = nil
-	m.currentView = viewTransaction
-	m.form.focusedField = focusPostingAccount
-	m.form.focusedPosting = 0
-	m.form.postings[0].accountInput.Focus()
-	m.refreshSuggestions()
-	m.recalculateRemaining()
-}
-
-func (m *Model) skipTemplate() {
-	m.templateOptions = nil
-	if len(m.form.postings) == 0 {
-		m.addPostingLine(false)
-	}
-	m.currentView = viewTransaction
-	m.form.focusedField = focusPostingAccount
-	m.form.focusedPosting = 0
-	m.form.postings[0].accountInput.Focus()
-	m.refreshSuggestions()
-	m.recalculateRemaining()
-}
-
-func (m *Model) updateConfirmView(msg tea.KeyMsg) tea.Cmd {
-	switch msg.String() {
-	case "ctrl+c":
-		return tea.Quit
-	case "enter":
-		switch m.pendingConfirm {
-		case confirmWrite:
-			if err := m.writeTransactionsToLedger(); err != nil {
-				m.setStatus(fmt.Sprintf("Failed to write: %v", err), statusDuration)
-			} else {
-				count := len(m.batch)
-				m.setStatus(fmt.Sprintf("Wrote %d transaction(s) to %s", count, m.ledgerFilePath), statusShortDuration)
-				m.batch = nil
-				m.cursor = 0
-				if err := session.DeleteSession(); err != nil {
-					m.setStatus(fmt.Sprintf("Ledger written but failed to clear session: %v", err), statusDuration)
-				}
-			}
-			m.currentView = viewBatch
-		case confirmQuit:
-			if err := session.DeleteSession(); err != nil {
-				m.setStatus(fmt.Sprintf("Failed to clear session: %v", err), statusDuration)
-			}
-			return tea.Quit
-		}
-	case "esc":
-		m.currentView = viewBatch
-	}
-	return nil
-}
-
-func (m *Model) confirmTransaction() bool {
-	if !m.form.headerConfirmed {
-		if !m.finalizeHeader(false) {
-			return false
-		}
-	}
-
-	date := m.form.date.time()
-	if date.IsZero() {
-		m.setStatus("Invalid date", statusShortDuration)
-		m.form.focusedField = focusDate
-		return false
-	}
-
-	if !m.evaluateInput(&m.form.totalInput) {
-		m.form.focusedField = focusTotal
-		return false
-	}
-
-	totalValue, err := decimal.NewFromString(strings.TrimSpace(m.form.totalInput.Value()))
-	if err != nil {
-		m.setStatus("Total amount is invalid", statusShortDuration)
-		m.form.focusedField = focusTotal
-		return false
-	}
-
-	primaryAccount := strings.TrimSpace(m.form.primaryInput.Value())
-	if primaryAccount == "" {
-		m.setStatus("Primary account is required", statusShortDuration)
-		m.form.focusedField = focusPrimaryAccount
-		return false
-	}
-
-	// Evaluate all posting amount inputs before validation
-	for i := range m.form.postings {
-		if !m.evaluateInput(&m.form.postings[i].amountInput) {
-			m.form.focusedField = focusPostingAmount
-			m.form.focusedPosting = i
-			return false
-		}
-	}
-
-	// Build postings
-	postings := make([]core.Posting, 0, len(m.form.postings)+1)
-	postings = append(postings, core.Posting{
-		Account: primaryAccount,
-		Amount:  totalValue.Neg().StringFixed(2),
-	})
-
-	var allocationCount int
-	allocated := decimal.Zero
-
-	for i, line := range m.form.postings {
-		account := strings.TrimSpace(line.accountInput.Value())
-		amountStr := strings.TrimSpace(line.amountInput.Value())
-		if account == "" && amountStr == "" {
-			continue
-		}
-		if account == "" {
-			m.setStatus(fmt.Sprintf("Posting %d is missing an account", i+1), statusShortDuration)
-			m.form.focusedField = focusPostingAccount
-			m.form.focusedPosting = i
-			m.form.postings[i].accountInput.Focus()
-			return false
-		}
-		if amountStr == "" {
-			m.setStatus(fmt.Sprintf("Posting %d is missing an amount", i+1), statusShortDuration)
-			m.form.focusedField = focusPostingAmount
-			m.form.focusedPosting = i
-			m.form.postings[i].amountInput.Focus()
-			return false
-		}
-		amountValue, err := decimal.NewFromString(amountStr)
-		if err != nil {
-			m.setStatus(fmt.Sprintf("Posting %d amount is invalid", i+1), statusShortDuration)
-			m.form.focusedField = focusPostingAmount
-			m.form.focusedPosting = i
-			return false
-		}
-		allocated = allocated.Add(amountValue)
-		postings = append(postings, core.Posting{Account: account, Amount: amountValue.StringFixed(2)})
-		allocationCount++
-	}
-
-	if allocationCount == 0 {
-		m.setStatus("At least one allocation is required", statusShortDuration)
-		return false
-	}
-
-	remaining := totalValue.Sub(allocated)
-	if remaining.Abs().GreaterThan(decimal.NewFromFloat(0.01)) {
-		m.setStatus("Allocations must balance with total", statusDuration)
-		return false
-	}
-
-	tx := core.Transaction{
-		Date:     date,
-		Payee:    m.form.payeeInput.Value(),
-		Postings: postings,
-	}
-
-	wasEdit := m.editingIndex >= 0 && m.editingIndex < len(m.batch)
-
-	if wasEdit {
-		m.batch[m.editingIndex] = tx
-	} else {
-		m.batch = append(m.batch, tx)
-		m.editingIndex = len(m.batch) - 1
-	}
-
-	sort.SliceStable(m.batch, func(i, j int) bool {
-		if m.batch[i].Date.Equal(m.batch[j].Date) {
-			return m.batch[i].Payee < m.batch[j].Payee
-		}
-		return m.batch[i].Date.Before(m.batch[j].Date)
-	})
-
-	// Update cursor to edited/added transaction
-	m.cursor = m.findTransactionIndex(tx)
-
-	if err := session.SaveBatch(m.batch); err != nil {
-		m.setStatus(fmt.Sprintf("Saved transaction but failed to persist session: %v", err), statusDuration)
-	} else {
-		action := "added"
-		if wasEdit {
-			action = "updated"
-		}
-		m.setStatus(fmt.Sprintf("Transaction %s (%d total)", action, len(m.batch)), statusShortDuration)
-	}
-
-	m.lastDate = date
-	m.lastPrimary = primaryAccount
-	m.currentView = viewBatch
-	m.resetForm(date, primaryAccount)
-	return true
-}
-
-func (m *Model) findTransactionIndex(tx core.Transaction) int {
-	for i, candidate := range m.batch {
-		if candidate.Date.Equal(tx.Date) && candidate.Payee == tx.Payee && len(candidate.Postings) == len(tx.Postings) {
-			match := true
-			for j := range candidate.Postings {
-				if candidate.Postings[j] != tx.Postings[j] {
-					match = false
-					break
-				}
-			}
-			if match {
-				return i
-			}
-		}
-	}
-	return len(m.batch) - 1
-}
-func (m *Model) textInputFocused() bool {
-	input := m.currentTextInput()
-	if input == nil {
-		return false
-	}
-	return input.Focused()
-}
 func (m *Model) writeTransactionsToLedger() error {
 	if len(m.batch) == 0 {
 		return fmt.Errorf("no transactions to write")
 	}
-
 	file, err := os.OpenFile(m.ledgerFilePath, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("open ledger: %w", err)
 	}
 	defer file.Close()
-
 	for _, tx := range m.batch {
 		if _, err := file.WriteString("\n"); err != nil {
 			return fmt.Errorf("write separator: %w", err)
@@ -1238,155 +1331,25 @@ func (m *Model) writeTransactionsToLedger() error {
 	return nil
 }
 
-func (m *Model) renderBatchView() string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "-- Batch Summary (%d transactions) --\n\n", len(m.batch))
-
-	if len(m.batch) == 0 {
-		b.WriteString("No transactions in current batch.\n\n")
-	} else {
-		for i, tx := range m.batch {
-			cursor := " "
-			if i == m.cursor {
-				cursor = ">"
-			}
-			payee := tx.Payee
-			if len(payee) > 28 {
-				payee = payee[:25] + "..."
-			}
-			primary := ""
-			if len(tx.Postings) > 0 {
-				primary = tx.Postings[0].Account
-				parts := strings.Split(primary, ":")
-				primary = parts[len(parts)-1]
-			}
-			fmt.Fprintf(&b, "%s %s %-28s (%s)\n", cursor, tx.Date.Format("2006-01-02"), payee, primary)
+func (m *Model) textInputFocused() bool {
+	switch m.form.focusedField {
+	case focusPayee:
+		return m.form.payeeInput.Focused()
+	case focusSectionAccount:
+		if line := m.currentLine(); line != nil {
+			return line.accountInput.Focused()
 		}
-		b.WriteString("\n")
-	}
-
-	if msg := m.statusLine(); msg != "" {
-		fmt.Fprintf(&b, "%s\n\n", msg)
-	}
-
-	b.WriteString("[n]ew  [e]dit  [w]rite  [q]uit  [enter]edit selected")
-	return b.String()
-}
-
-func (m *Model) renderTransactionView() string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "-- Transaction Entry -- Remaining: $%s --\n\n", m.form.remaining.StringFixed(2))
-
-	fmt.Fprintf(&b, "Date    %s\n", m.form.date.display(m.form.focusedField == focusDate))
-
-	fmt.Fprintf(&b, "Payee   %s", m.form.payeeInput.View())
-	if m.form.focusedField == focusPayee {
-		b.WriteString(renderSuggestionList(m.form.payeeInput))
-	}
-	b.WriteString("\n")
-
-	fmt.Fprintf(&b, "Total   %s\n", m.form.totalInput.View())
-
-	fmt.Fprintf(&b, "From    %s", m.form.primaryInput.View())
-	if m.form.focusedField == focusPrimaryAccount {
-		b.WriteString(renderSuggestionList(m.form.primaryInput))
-	}
-	b.WriteString("\n\n")
-
-	if len(m.form.postings) > 0 {
-		b.WriteString("Allocations:\n")
-		for i, posting := range m.form.postings {
-			cursor := " "
-			if m.form.focusedPosting == i && (m.form.focusedField == focusPostingAccount || m.form.focusedField == focusPostingAmount) {
-				cursor = ">"
-			}
-			fmt.Fprintf(&b, "%s [%s] [%s]", cursor, posting.accountInput.View(), posting.amountInput.View())
-			if m.form.focusedPosting == i && m.form.focusedField == focusPostingAccount {
-				b.WriteString(renderSuggestionList(posting.accountInput))
-			}
-			b.WriteString("\n")
-		}
-		b.WriteString("\n")
-	}
-
-	if msg := m.statusLine(); msg != "" {
-		fmt.Fprintf(&b, "%s\n\n", msg)
-	}
-
-	help := "[tab]next [shift+tab]prev [ctrl+n]add leg [b]alance [esc]cancel"
-	if !m.textInputFocused() {
-		help = help + " [c]onfirm"
-	}
-	b.WriteString(help)
-	return b.String()
-}
-
-func (m *Model) renderTemplateView() string {
-	var b strings.Builder
-	payee := m.form.payeeInput.Value()
-	fmt.Fprintf(&b, "-- Templates for %s --\n\n", payee)
-
-	for i, template := range m.templateOptions {
-		cursor := " "
-		if i == m.templateCursor {
-			cursor = ">"
-		}
-		fmt.Fprintf(&b, "%s %d. %s (used %d times)\n", cursor, i+1, strings.Join(template.Accounts, ", "), template.Frequency)
-	}
-
-	b.WriteString("\n[enter]apply  [esc]skip")
-	return b.String()
-}
-
-func (m *Model) renderConfirmView() string {
-	var b strings.Builder
-	switch m.pendingConfirm {
-	case confirmWrite:
-		fmt.Fprintf(&b, "Write %d transaction(s) to %s?\n\n", len(m.batch), m.ledgerFilePath)
-	case confirmQuit:
-		if len(m.batch) > 0 {
-			fmt.Fprintf(&b, "Quit without writing %d pending transaction(s)?\n\n", len(m.batch))
-		} else {
-			b.WriteString("Quit the application?\n\n")
+	case focusSectionAmount:
+		if line := m.currentLine(); line != nil {
+			return line.amountInput.Focused()
 		}
 	}
-	b.WriteString("[enter]confirm  [esc]cancel")
-	return b.String()
+	return false
 }
 
-func (m *Model) statusLine() string {
-	if m.statusMessage == "" {
-		return ""
+func (m *Model) refreshAfterLoad() {
+	m.recalculateTotals()
+	if m.currentView == viewTransaction {
+		m.refreshSuggestions()
 	}
-	if !m.statusExpiry.IsZero() && time.Now().After(m.statusExpiry) {
-		return ""
-	}
-	return m.statusMessage
-}
-
-func renderSuggestionList(input textinput.Model) string {
-	matches := input.MatchedSuggestions()
-	if len(matches) == 0 {
-		return ""
-	}
-	if len(matches) == 1 {
-		return ""
-	}
-	var b strings.Builder
-	b.WriteString("\n")
-	display := len(matches)
-	if display > maxSuggestionDisplay {
-		display = maxSuggestionDisplay
-	}
-	for i := 0; i < display; i++ {
-		cursor := " "
-		if i == input.CurrentSuggestionIndex() {
-			cursor = ">"
-		}
-		fmt.Fprintf(&b, "      %s %s\n", cursor, matches[i])
-	}
-	if len(matches) > display {
-		fmt.Fprintf(&b, "      ... and %d more\n", len(matches)-display)
-	}
-	return b.String()
 }

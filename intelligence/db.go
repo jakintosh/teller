@@ -5,12 +5,20 @@ import (
 	"strings"
 
 	"git.sr.ht/~jakintosh/teller/core"
+	"github.com/shopspring/decimal"
 )
+
+type templateBucket struct {
+	debit     []string
+	credit    []string
+	frequency int
+}
 
 // TemplateRecord stores a transaction structure and its frequency.
 type TemplateRecord struct {
-	Accounts  []string
-	Frequency int
+	DebitAccounts  []string
+	CreditAccounts []string
+	Frequency      int
 }
 
 // IntelligenceDB is the in-memory data store for all suggestion features.
@@ -58,51 +66,70 @@ func NewIntelligenceDB(transactions []core.Transaction) (*IntelligenceDB, error)
 	}
 
 	// Analyze transaction templates
-	templateFreq := make(map[string]map[string]int) // payee -> template_key -> frequency
+	templateFreq := make(map[string]map[string]templateBucket) // payee -> key -> bucket
 
 	for _, tx := range transactions {
 		if tx.Payee == "" || len(tx.Postings) == 0 {
 			continue
 		}
 
-		// Extract account names from postings
-		var accounts []string
+		var debitAccounts []string
+		var creditAccounts []string
 		for _, posting := range tx.Postings {
-			if posting.Account != "" {
-				accounts = append(accounts, posting.Account)
+			if posting.Account == "" {
+				continue
+			}
+			amount, err := decimal.NewFromString(strings.TrimSpace(posting.Amount))
+			if err != nil {
+				continue
+			}
+			if amount.Sign() >= 0 {
+				debitAccounts = append(debitAccounts, posting.Account)
+			} else {
+				creditAccounts = append(creditAccounts, posting.Account)
 			}
 		}
 
-		if len(accounts) == 0 {
+		if len(debitAccounts) == 0 && len(creditAccounts) == 0 {
 			continue
 		}
 
-		// Sort accounts to create a consistent template key
-		sort.Strings(accounts)
-		templateKey := strings.Join(accounts, "|")
+		sortedDebit := append([]string(nil), debitAccounts...)
+		sortedCredit := append([]string(nil), creditAccounts...)
+		sort.Strings(sortedDebit)
+		sort.Strings(sortedCredit)
+		templateKey := strings.Join(sortedDebit, "|") + "->" + strings.Join(sortedCredit, "|")
 
-		// Initialize payee map if needed
 		if templateFreq[tx.Payee] == nil {
-			templateFreq[tx.Payee] = make(map[string]int)
+			templateFreq[tx.Payee] = make(map[string]templateBucket)
 		}
 
-		// Increment frequency
-		templateFreq[tx.Payee][templateKey]++
+		bucket := templateFreq[tx.Payee][templateKey]
+		bucket.frequency++
+		bucket.debit = sortedDebit
+		bucket.credit = sortedCredit
+		templateFreq[tx.Payee][templateKey] = bucket
 	}
 
 	// Convert to TemplateRecord slices and sort by frequency
 	for payee, templates := range templateFreq {
 		var records []TemplateRecord
-		for templateKey, frequency := range templates {
-			accounts := strings.Split(templateKey, "|")
+		for _, bucket := range templates {
 			records = append(records, TemplateRecord{
-				Accounts:  accounts,
-				Frequency: frequency,
+				DebitAccounts:  append([]string(nil), bucket.debit...),
+				CreditAccounts: append([]string(nil), bucket.credit...),
+				Frequency:      bucket.frequency,
 			})
 		}
 
 		// Sort by frequency (descending)
 		sort.Slice(records, func(i, j int) bool {
+			if records[i].Frequency == records[j].Frequency {
+				if len(records[i].DebitAccounts) == len(records[j].DebitAccounts) {
+					return strings.Join(records[i].DebitAccounts, "|") < strings.Join(records[j].DebitAccounts, "|")
+				}
+				return len(records[i].DebitAccounts) > len(records[j].DebitAccounts)
+			}
 			return records[i].Frequency > records[j].Frequency
 		})
 

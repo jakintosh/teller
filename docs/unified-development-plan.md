@@ -4,22 +4,22 @@ The goal of this phase is to build the non-visual, backend foundation of the app
 
 `// core/types.go`
 
-`// Posting represents a single entry in a transaction.`  
-`type Posting struct {`  
-	`Account string // e.g., "Expenses:Food:Groceries"`  
-	`Amount  string // e.g., "12.34" (stored as string for precision)`  
+`// Posting represents a single entry in a transaction.`
+`type Posting struct {`
+	`Account string // e.g., "Expenses:Food:Groceries"`
+	`Amount  string // e.g., "12.34" (stored as string for precision)`
 `}`
 
-`// Transaction represents a complete financial event.`  
-`type Transaction struct {`  
-	`Date     time.Time`  
-	`Payee    string // e.g., "Super Grocery Store"`  
-	`Postings []Posting`  
+`// Transaction represents a complete financial event.`
+`type Transaction struct {`
+	`Date     time.Time`
+	`Payee    string // e.g., "Super Grocery Store"`
+	`Postings []Posting`
 `}`
 
 `// parser/parser.go`
 
-`// ParseFile reads a ledger-cli file and converts it into Transaction structs.`  
+`// ParseFile reads a ledger-cli file and converts it into Transaction structs.`
 `func ParseFile(filePath string) ([]Transaction, error)`
 
 ## **Step 1.1: Project Setup & Core Data Types**
@@ -28,14 +28,14 @@ This step focuses on initializing the Go project and defining the primary data s
 
 ### **Tasks**
 
-* Initialize a new Go module for the project.  
-* Create a core package to hold the application's central data types.  
-* Define the Posting struct with Account (string) and Amount (string) fields.  
+* Initialize a new Go module for the project.
+* Create a core package to hold the application's central data types.
+* Define the Posting struct with Account (string) and Amount (string) fields.
 * Define the Transaction struct with Date (time.Time), Payee (string), and Postings (\[\]Posting) fields.
 
 ### **Documentation**
 
-* **Project Brief:** This document establishes the core need to interact with ledger-cli data.  
+* **Project Brief:** This document establishes the core need to interact with ledger-cli data.
 * **Ledger Documentation (ledger-cli.org/doc/ledger3.txt):** Refer to this for the canonical structure of a transaction, which these structs are designed to model.
 
 ### **Testing**
@@ -48,13 +48,13 @@ The goal of this step is to implement the file-reading logic. The ParseFile func
 
 ### **Tasks**
 
-* Create a parser package to contain the file parsing logic.  
-* Implement the ParseFile function, which accepts a file path string.  
-* Inside the function, open and read the contents of the file at the given path.  
-* Loop through the file line-by-line, using regular expressions to identify the start of a transaction (a line beginning with a date).  
-* For each transaction block, extract the date, the payee/description, and all subsequent indented posting lines.  
-* For each posting line, parse the account name and the amount.  
-* Populate the Transaction and Posting structs with the extracted data and append them to a slice.  
+* Create a parser package to contain the file parsing logic.
+* Implement the ParseFile function, which accepts a file path string.
+* Inside the function, open and read the contents of the file at the given path.
+* Loop through the file line-by-line, using regular expressions to identify the start of a transaction (a line beginning with a date).
+* For each transaction block, extract the date, the payee/description, and all subsequent indented posting lines.
+* For each posting line, parse the account name and the amount.
+* Populate the Transaction and Posting structs with the extracted data and append them to a slice.
 * Return the completed \[\]Transaction slice.
 
 ### **Documentation**
@@ -63,9 +63,9 @@ The goal of this step is to implement the file-reading logic. The ParseFile func
 
 ### **Testing**
 
-* Create a sample.ledger file containing 5-10 varied transactions, including ones with comments, different numbers of postings, and various formatting styles.  
-* Write a unit test for ParseFile that reads this sample file.  
-* Assert that the number of Transaction structs returned matches the number of transactions in the file.  
+* Create a sample.ledger file containing 5-10 varied transactions, including ones with comments, different numbers of postings, and various formatting styles.
+* Write a unit test for ParseFile that reads this sample file.
+* Assert that the number of Transaction structs returned matches the number of transactions in the file.
 * Assert that the Date, Payee, Account, and Amount fields for a few specific transactions are parsed correctly.
 
 # **Phase 2: The "Intelligence" Engine**
@@ -74,31 +74,31 @@ The goal of this phase is to build the application's in-memory "brain" from the 
 
 `// intelligence/trie.go`
 
-`// Trie is a prefix tree for efficient prefix-based string searching.`  
+`// Trie is a prefix tree for efficient prefix-based string searching.`
 `type Trie struct { /* ... */ }`
 
-`func NewTrie() *Trie`  
-`func (t *Trie) Insert(word string)`  
+`func NewTrie() *Trie`
+`func (t *Trie) Insert(word string)`
 `func (t *Trie) Find(prefix string) []string`
 
 `// intelligence/db.go`
 
-`// TemplateRecord stores a transaction structure and its frequency.`  
-`type TemplateRecord struct {`  
-	`Accounts  []string`  
-	`Frequency int`  
+`// TemplateRecord stores a transaction structure and its frequency.`
+`type TemplateRecord struct {`
+	`Accounts  []string`
+	`Frequency int`
 `}`
 
-`// IntelligenceDB is the in-memory data store for all suggestion features.`  
-`type IntelligenceDB struct {`  
-	`Payees    []string`  
-	`Accounts  *Trie`  
-	`Templates map[string][]TemplateRecord`  
+`// IntelligenceDB is the in-memory data store for all suggestion features.`
+`type IntelligenceDB struct {`
+	`Payees    []string`
+	`Accounts  *Trie`
+	`Templates map[string][]TemplateRecord`
 `}`
 
-`func NewIntelligenceDB(transactions []Transaction) (*IntelligenceDB, error)`  
-`func (db *IntelligenceDB) FindPayees(prefix string) []string`  
-`func (db *IntelligenceDB) FindAccounts(prefix string) []string`  
+`func NewIntelligenceDB(transactions []Transaction) (*IntelligenceDB, error)`
+`func (db *IntelligenceDB) FindPayees(prefix string) []string`
+`func (db *IntelligenceDB) FindAccounts(prefix string) []string`
 `func (db *IntelligenceDB) FindTemplates(payee string) []TemplateRecord`
 
 ## **Step 2.1: Baseline IntelligenceDB Structure**
@@ -107,16 +107,16 @@ This step focuses on creating the initial IntelligenceDB structure and populatin
 
 ### **Tasks**
 
-* Create an intelligence package.  
-* Define the IntelligenceDB struct, initially containing just a Payees \[\]string field.  
-* Implement the NewIntelligenceDB constructor, which accepts the \[\]Transaction slice.  
-* Inside the constructor, iterate through all transactions to populate the Payees slice, ensuring all entries are unique and sorted.  
+* Create an intelligence package.
+* Define the IntelligenceDB struct, initially containing just a Payees \[\]string field.
+* Implement the NewIntelligenceDB constructor, which accepts the \[\]Transaction slice.
+* Inside the constructor, iterate through all transactions to populate the Payees slice, ensuring all entries are unique and sorted.
 * Implement the FindPayees(prefix string) \[\]string method to search the Payees slice.
 
 ### **Testing**
 
-* Write unit tests for NewIntelligenceDB using a mock slice of transactions.  
-* Assert that the Payees slice contains the correct number of unique, sorted payees.  
+* Write unit tests for NewIntelligenceDB using a mock slice of transactions.
+* Assert that the Payees slice contains the correct number of unique, sorted payees.
 * Assert that FindPayees returns correct results for a given prefix.
 
 ## **Step 2.2: Trie Implementation for Account Autocomplete**
@@ -125,10 +125,10 @@ This step focuses on implementing the Trie data structure and integrating it int
 
 ### **Tasks**
 
-* Implement a Trie data structure within the intelligence package, complete with Insert and Find methods.  
-* Add an Accounts \*Trie field to the IntelligenceDB struct.  
-* In the NewIntelligenceDB constructor, extend the transaction processing loop to iterate through every posting of every transaction.  
-* For each posting, Insert the full account name (e.g., "Expenses:Food:Groceries") into the Accounts Trie.  
+* Implement a Trie data structure within the intelligence package, complete with Insert and Find methods.
+* Add an Accounts \*Trie field to the IntelligenceDB struct.
+* In the NewIntelligenceDB constructor, extend the transaction processing loop to iterate through every posting of every transaction.
+* For each posting, Insert the full account name (e.g., "Expenses:Food:Groceries") into the Accounts Trie.
 * Implement the FindAccounts(prefix string) \[\]string method, which uses the Trie to perform its search.
 
 ### **Documentation**
@@ -137,8 +137,8 @@ This step focuses on implementing the Trie data structure and integrating it int
 
 ### **Testing**
 
-* Write dedicated unit tests for the Trie to ensure Insert and Find work correctly, especially with multi-level prefixes.  
-* Extend the NewIntelligenceDB tests to verify that the Accounts Trie is populated correctly.  
+* Write dedicated unit tests for the Trie to ensure Insert and Find work correctly, especially with multi-level prefixes.
+* Extend the NewIntelligenceDB tests to verify that the Accounts Trie is populated correctly.
 * Assert that FindAccounts("Expenses:Fo") returns the correct subset of accounts (e.g., \["Expenses:Food"\]).
 
 ## **Step 2.3: Transaction Template Inference**
@@ -147,26 +147,26 @@ This step implements the application's most advanced intelligence feature: learn
 
 ### **Tasks**
 
-* Define a new TemplateRecord struct to hold a slice of account names and their frequency.  
-* Add a Templates map\[string\]\[\]TemplateRecord field to the IntelligenceDB struct.  
-* In NewIntelligenceDB, add a new analysis loop that processes each transaction:  
-  * For a given transaction, get the payee and the list of its posting accounts.  
-  * To create a comparable key, sort the list of account names and join them into a single string.  
-  * Use this key to find the corresponding TemplateRecord for that payee and increment its Frequency, or create a new record if one doesn't exist.  
-* After processing all transactions, perform a final pass to sort each payee's \[\]TemplateRecord slice by Frequency in descending order.  
+* Define a TemplateRecord struct that tracks debit account names, credit account names, and their frequency.
+* Add a Templates map\[string\]\[\]TemplateRecord field to the IntelligenceDB struct.
+* In NewIntelligenceDB, add a new analysis loop that processes each transaction:
+  * Split postings into debit accounts (amount ≥ 0) and credit accounts (amount < 0).
+  * Sort each list independently and combine them into a composite key to group like-for-like templates.
+  * Increment the TemplateRecord frequency for the key, creating a new record if one does not yet exist.
+* After processing all transactions, perform a final pass to sort each payee's \[\]TemplateRecord slice by descending frequency.
 * Implement the new (db \*IntelligenceDB) FindTemplates(payee string) \[\]TemplateRecord method.
 
 ### **Documentation**
 
-* **Project Brief:** References "Story \#4 (Automatic Template Suggestion)" as a core MVP feature.  
-* **TUI Design Document:** The user action list includes "Receive and Select a Template for Allocating the Total".
+* **Project Brief:** References "Story \#4 (Automatic Template Suggestion)" as a core MVP feature.
+* **TUI Design Document:** The user action list includes "Receive and Select a Template for Debit/Credit Allocation".
 
 ### **Testing**
 
-* Create a unit test with a mock slice of transactions where a payee ("City Market") has two transactions with the template \[Assets:Checking, Expenses:Groceries\] and one with a different template.  
-* Call FindTemplates("City Market") on the resulting database.  
-* Assert that the method returns two records.  
-* Assert that the first record in the slice has a Frequency of 2 and matches the more common template.
+* Create a unit test with a mock slice of transactions where a payee ("City Market") has two transactions with the debit set {Expenses:Groceries} and credit set {Assets:Checking}, plus one transaction with a different debit/credit combination.
+* Call FindTemplates("City Market") on the resulting database.
+* Assert that the method returns two records.
+* Assert that the first record has a Frequency of 2 and exposes the expected debit and credit arrays.
 
 # **Phase 3: The User Interface**
 
@@ -174,45 +174,45 @@ The goal of this phase is to build the entire user-facing terminal interface usi
 
 `// tui/model.go`
 
-`type viewState int`  
-`const (`  
-	`batchView viewState = iota`  
-	`transactionView`  
+`type viewState int`
+`const (`
+	`viewBatch viewState = iota`
+	`viewTransaction`
+	`viewTemplate`
+	`viewConfirm`
 `)`
 
-`// Represents a single line in the transaction form's posting list.`  
-`type postingLine struct {`  
-    `accountInput textinput.Model`  
-    `amountInput  textinput.Model`  
+`type postingLine struct {`
+    `accountInput textinput.Model`
+    `amountInput  textinput.Model`
 `}`
 
-`// Manages the state of the transaction entry form.`  
-`type transactionForm struct {`  
-    `dateInput    textinput.Model`  
-    `payeeInput   textinput.Model`  
-    `totalInput   textinput.Model`  
-    `postings     []postingLine`  
-    `focusedField int // Index or enum to track focus`  
+`type transactionForm struct {`
+    `date           dateField`
+    `payeeInput     textinput.Model`
+    `debitLines     []postingLine`
+    `creditLines    []postingLine`
+    `focusedField   focusedField`
+    `focusedSection sectionType`
+    `focusedIndex   int`
+    `remaining      decimal.Decimal`
 `}`
 
-`// Model is the single source of truth for the TUI application state.`  
-`type Model struct {`  
-	`db                      *IntelligenceDB`  
-	`batch                   []Transaction`  
-	`currentView             viewState`  
-	`form                    transactionForm`  
-	`autocompleteSuggestions []string`  
-	`templateSuggestions     []TemplateRecord`  
-	`cursor                  int`  
-	`err                     error`  
-	`statusMessage           string`  
-	`statusExpiry            time.Time`  
+`type Model struct {`
+	`db              *IntelligenceDB`
+	`batch           []Transaction`
+	`currentView     viewState`
+	`form            transactionForm`
+	`templateOptions []TemplateRecord`
+	`cursor          int`
+	`statusMessage   string`
+	`statusExpiry    time.Time`
 `}`
 
-`func NewModel(db *IntelligenceDB) Model`  
-`func (m Model) Init() tea.Cmd`  
-`func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd)`  
-`func (m Model) View() string`
+`func NewModel(db *IntelligenceDB) *Model`
+`func (m *Model) Init() tea.Cmd`
+`func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd)`
+`func (m *Model) View() string`
 
 ## **Step 3.1: TUI Scaffolding & Batch Review Screen**
 
@@ -220,12 +220,12 @@ This step covers building the main application shell and the primary "home" scre
 
 ### **Tasks**
 
-* Create a tui package and define the main Model struct to hold all application state.  
-* Implement the Init, Update, and View methods required by bubbletea.  
-* In the application's main function, call the parser, create the IntelligenceDB, and start the bubbletea program with the new model.  
-* In the View method, render the list of transactions in Model.batch when currentView is batchView.  
-* In the Update method, handle Up/Down arrow keys to move the cursor through the batch list.  
-* Handle the n key to switch currentView to transactionView, initializing a new, empty form.  
+* Create a tui package and define the main Model struct to hold all application state.
+* Implement the Init, Update, and View methods required by bubbletea.
+* In the application's main function, call the parser, create the IntelligenceDB, and start the bubbletea program with the new model.
+* In the View method, render the list of transactions in Model.batch when currentView is batchView.
+* In the Update method, handle Up/Down arrow keys to move the cursor through the batch list.
+* Handle the n key to switch currentView to transactionView, initializing a new, empty form.
 * Handle the e key to switch currentView to transactionView, pre-populating the form with data from the selected transaction for editing.
 
 ### **Documentation**
@@ -234,7 +234,7 @@ This step covers building the main application shell and the primary "home" scre
 
 ### **Testing**
 
-* Manually test all keybindings on the Batch Review screen (n, e, q, arrows) to ensure they work as expected.  
+* Manually test all keybindings on the Batch Review screen (n, e, q, arrows) to ensure they work as expected.
 * Verify that editing a transaction correctly pre-populates the form.
 
 ## **Step 3.2: Transaction Form Workflow & State Management**
@@ -243,12 +243,12 @@ The goal of this step is to implement the detailed mechanics of the transaction 
 
 ### **Tasks**
 
-* Define a transactionForm struct within the tui.Model to manage the form's state, including a dynamic slice of postingLine structs.  
-* Each postingLine struct will contain its own accountInput and amountInput textinput.Model.  
-* Use a decimal library (e.g., shopspring/decimal) for all monetary calculations to avoid floating-point errors.  
-* In the Update function, after any change to the totalInput or any amountInput, recalculate and update a remainingBalance field in the model.  
-* Render the remainingBalance in the View function, providing the user with real-time feedback.  
-* Implement logic to handle the b ("balance last split") keypress. This function should calculate the sum of all *other* splits and set the value of the currently focused amount field to the remaining balance.  
+* Define a transactionForm struct within the tui.Model to manage the form's state, including a dynamic slice of postingLine structs.
+* Each postingLine struct will contain its own accountInput and amountInput textinput.Model.
+* Use a decimal library (e.g., shopspring/decimal) for all monetary calculations to avoid floating-point errors.
+* In the Update function, after any change to the totalInput or any amountInput, recalculate and update a remainingBalance field in the model.
+* Render the remainingBalance in the View function, providing the user with real-time feedback.
+* Implement logic to handle the b ("balance last split") keypress. This function should calculate the sum of all *other* splits and set the value of the currently focused amount field to the remaining balance.
 * Implement handlers for adding (Ctrl+N) and deleting (Ctrl+D) postingLine entries from the form's state. Ensure focus is managed correctly after these actions.
 
 ### **Documentation**
@@ -257,11 +257,11 @@ The goal of this step is to implement the detailed mechanics of the transaction 
 
 ### **Testing**
 
-* Manually test the form's functionality:  
-  * Enter a total of 100.00. Add three posting lines.  
-  * In the first, enter 25.00. Verify the "Remaining" balance updates to 75.00.  
-  * In the second, enter 50.00. Verify the "Remaining" balance updates to 25.00.  
-  * Focus the third amount field and press b. Verify the field's value is automatically set to 25.00 and the "Remaining" balance is 0.00.  
+* Manually test the form's functionality:
+  * Enter a total of 100.00. Add three posting lines.
+  * In the first, enter 25.00. Verify the "Remaining" balance updates to 75.00.
+  * In the second, enter 50.00. Verify the "Remaining" balance updates to 25.00.
+  * Focus the third amount field and press b. Verify the field's value is automatically set to 25.00 and the "Remaining" balance is 0.00.
   * Verify that adding and deleting posting lines works as expected.
 
 ## **Step 3.3: Context-Sensitive Input Routing**
@@ -270,22 +270,22 @@ This step focuses on implementing the core input routing logic that allows the T
 
 ### **Tasks**
 
-* In the transactionForm state, add an integer or enum field named focusedField to track which UI element is active (e.g., Payee, Total, Posting 1 Account, etc.).  
-* In the Update function, structure the tea.KeyMsg handling as a context-sensitive hierarchy:  
-  1. First, check for global commands that always apply (e.g., ctrl+c to quit).  
-  2. Second, check for navigation commands like Tab or Shift+Tab. These commands will increment or decrement focusedField and call the .Focus() and .Blur() methods on the relevant components.  
-  3. Third, check if the currently focused component is a textinput that is active (.Focused() \== true).  
-  4. **If a text input is focused**, delegate the tea.KeyMsg directly to that component's Update method. This allows the component to handle character input internally.  
-  5. **If no text input is focused**, treat the keypress as a form-level command (e.g., c for confirm, b for balance).  
+* In the transactionForm state, add an integer or enum field named focusedField to track which UI element is active (e.g., Payee, Total, Posting 1 Account, etc.).
+* In the Update function, structure the tea.KeyMsg handling as a context-sensitive hierarchy:
+  1. First, check for global commands that always apply (e.g., ctrl+c to quit).
+  2. Second, check for navigation commands like Tab or Shift+Tab. These commands will increment or decrement focusedField and call the .Focus() and .Blur() methods on the relevant components.
+  3. Third, check if the currently focused component is a textinput that is active (.Focused() \== true).
+  4. **If a text input is focused**, delegate the tea.KeyMsg directly to that component's Update method. This allows the component to handle character input internally.
+  5. **If no text input is focused**, treat the keypress as a form-level command (e.g., c for confirm, b for balance).
 * Implement a status/help bar in the View that dynamically displays available commands based on the focusedField.
 
 ### **Testing**
 
-* Manually verify the input routing logic:  
-  * Focus the Payee field. Type "Coffee Shop". Verify the characters appear in the input and are not interpreted as commands.  
-  * Press Tab until no text field is focused. Verify the help text changes to show \[c\]onfirm.  
-  * Press c. Verify the transaction is confirmed.  
-  * Focus an amount field for a posting. Press b. Verify it triggers the balance logic.  
+* Manually verify the input routing logic:
+  * Focus the Payee field. Type "Coffee Shop". Verify the characters appear in the input and are not interpreted as commands.
+  * Press Tab until no text field is focused. Verify the help text changes to show \[c\]onfirm.
+  * Press c. Verify the transaction is confirmed.
+  * Focus an amount field for a posting. Press b. Verify it triggers the balance logic.
   * Focus the Payee field again. Press b. Verify it simply types the letter "b" in the field.
 
 # **Phase 4: Final Polish & Integration**
@@ -294,25 +294,25 @@ The goal of this final phase is to add the critical features that make the appli
 
 `// session/session.go`
 
-`// saveBatch serializes the current batch to a temporary file.`  
+`// saveBatch serializes the current batch to a temporary file.`
 `func saveBatch(filePath string, batch []Transaction) error`
 
-`// loadBatch deserializes a batch from a temporary file.`  
+`// loadBatch deserializes a batch from a temporary file.`
 `func loadBatch(filePath string) ([]Transaction, error)`
 
 `// util/calculator.go`
 
-`// evaluateExpression evaluates a mathematical string like "19.99 * 2".`  
+`// evaluateExpression evaluates a mathematical string like "19.99 * 2".`
 `func evaluateExpression(expr string) (string, error)`
 
 `// core/types.go (addition)`
 
-`// String formats a transaction into a valid ledger-cli text entry.`  
+`// String formats a transaction into a valid ledger-cli text entry.`
 `func (t *Transaction) String() string`
 
 `// ledger/writer.go`
 
-`// commitBatch appends a batch of transactions to the ledger file.`  
+`// commitBatch appends a batch of transactions to the ledger file.`
 `func commitBatch(ledgerFile string, batch []Transaction) error`
 
 ## **Step 4.1: Session Persistence**
@@ -321,22 +321,22 @@ This step implements a crucial data safety feature. To prevent the user from los
 
 ### **Tasks**
 
-* Create a session package.  
-* Implement saveBatch to serialize the Model.batch slice into a temporary JSON file (e.g., .ledger-helper-batch.tmp).  
-* Implement loadBatch to read and deserialize this file back into a \[\]Transaction.  
-* In the TUI's Update function, call saveBatch whenever a transaction is added to or edited in the batch.  
+* Create a session package.
+* Implement saveBatch to serialize the Model.batch slice into a temporary JSON file (e.g., .ledger-helper-batch.tmp).
+* Implement loadBatch to read and deserialize this file back into a \[\]Transaction.
+* In the TUI's Update function, call saveBatch whenever a transaction is added to or edited in the batch.
 * In the main application entry point, before starting the TUI, check for the existence of the temp file and call loadBatch to restore the previous session.
 
 ### **Documentation**
 
-* **Ledger Helper: Architectural Choices:** This document explicitly outlines the requirement for session persistence using a temporary file.  
+* **Ledger Helper: Architectural Choices:** This document explicitly outlines the requirement for session persistence using a temporary file.
 * **Technical Requirements:** Section 4.4 details the requirements for saving, loading, and deleting the temporary session file.
 
 ### **Testing**
 
-* Manually add several transactions to a batch.  
-* Force-quit the application (e.g., using ctrl+c).  
-* Restart the application and verify that the previously entered transactions are loaded and displayed correctly.  
+* Manually add several transactions to a batch.
+* Force-quit the application (e.g., using ctrl+c).
+* Restart the application and verify that the previously entered transactions are loaded and displayed correctly.
 * After a successful commit (Step 4.3), verify that the temporary file has been deleted.
 
 ## **Step 4.2: Inline Calculator & Transaction Formatting**
@@ -345,19 +345,19 @@ This step adds two high-value "quality of life" features. The inline calculator 
 
 ### **Tasks**
 
-* Select and integrate a lightweight third-party Go math expression evaluation library.  
-* Implement the evaluateExpression wrapper function.  
-* In the TUI's Update function, when an amount field loses focus, call evaluateExpression on its contents and update the field with the result if successful.  
+* Select and integrate a lightweight third-party Go math expression evaluation library.
+* Implement the evaluateExpression wrapper function.
+* In the TUI's Update function, when an amount field loses focus, call evaluateExpression on its contents and update the field with the result if successful.
 * Implement the String() method on the core.Transaction type. This method will format the struct's data into a multi-line, correctly indented string that conforms to the ledger file syntax.
 
 ### **Documentation**
 
-* **Project Brief:** This document lists "Inline Calculation for Splits" as a key feature of the MVP.  
+* **Project Brief:** This document lists "Inline Calculation for Splits" as a key feature of the MVP.
 * **Technical Requirements:** Section 3.1 details the required operators and the need for a decimal-safe math library.
 
 ### **Testing**
 
-* Write unit tests for evaluateExpression with various inputs, including addition, multiplication, and order of operations (e.g., "10+5\*2").  
+* Write unit tests for evaluateExpression with various inputs, including addition, multiplication, and order of operations (e.g., "10+5\*2").
 * Write unit tests for the Transaction.String() method to assert that its output perfectly matches the expected, correctly formatted ledger-cli text block.
 
 ## **Step 4.3: Committing to Ledger File**
@@ -366,11 +366,11 @@ This is the final and most important step, where the user's work is made permane
 
 ### **Tasks**
 
-* In the Batch Review screen's Update function, add a case to handle the w key ("write").  
-* When w is pressed, call a new commitBatch function.  
-* Inside commitBatch, open the user's main ledger file in append mode.  
-* Iterate through the Model.batch slice, call the .String() method on each transaction, and write the resulting string to the file.  
-* After the file write is successfully completed, delete the temporary session file from Step 4.1.  
+* In the Batch Review screen's Update function, add a case to handle the w key ("write").
+* When w is pressed, call a new commitBatch function.
+* Inside commitBatch, open the user's main ledger file in append mode.
+* Iterate through the Model.batch slice, call the .String() method on each transaction, and write the resulting string to the file.
+* After the file write is successfully completed, delete the temporary session file from Step 4.1.
 * Exit the application.
 
 ### **Documentation**
@@ -379,8 +379,8 @@ This is the final and most important step, where the user's work is made permane
 
 ### **Testing**
 
-* Perform a full, end-to-end manual test: start the app, add 2-3 transactions, press w to commit.  
-* Open the actual ledger file and verify that the new entries have been appended at the end and are formatted correctly.  
+* Perform a full, end-to-end manual test: start the app, add 2-3 transactions, press w to commit.
+* Open the actual ledger file and verify that the new entries have been appended at the end and are formatted correctly.
 * Confirm that the temporary session file (.ledger-helper-batch.tmp) no longer exists after the commit.
 
 ## **Step 4.4: Implement UI Error Handling**
@@ -389,18 +389,18 @@ The goal of this step is to implement a user-friendly error handling system with
 
 ### **Tasks**
 
-* Add two fields to the main tui.Model: statusMessage string and statusExpiry time.Time.  
-* For recoverable errors (e.g., an invalid expression in the inline calculator), set the statusMessage to the error text and statusExpiry to 5 seconds in the future.  
-* Use a tea.Tick message (e.g., every second) in the Update loop to check if the statusExpiry has passed, and if so, clear the statusMessage.  
-* Render the statusMessage in the status bar area of the View.  
-* For fatal errors on startup (e.g., ParseFile fails), populate the main Model.err field.  
+* Add two fields to the main tui.Model: statusMessage string and statusExpiry time.Time.
+* For recoverable errors (e.g., an invalid expression in the inline calculator), set the statusMessage to the error text and statusExpiry to 5 seconds in the future.
+* Use a tea.Tick message (e.g., every second) in the Update loop to check if the statusExpiry has passed, and if so, clear the statusMessage.
+* Render the statusMessage in the status bar area of the View.
+* For fatal errors on startup (e.g., ParseFile fails), populate the main Model.err field.
 * In the View function, add a top-level check: if Model.err is not nil, render a full-screen, polite error message and halt rendering of any other UI components.
 
 ### **Testing**
 
-* Manually test recoverable errors:  
-  * In an amount field, type an invalid math expression like "10 \+\* 5" and tab away.  
-  * Verify that an "Invalid expression" message appears in the status bar for a few seconds and then disappears.  
-* Test fatal errors:  
-  * Try to run the application on a non-existent or permission-denied ledger file.  
+* Manually test recoverable errors:
+  * In an amount field, type an invalid math expression like "10 \+\* 5" and tab away.
+  * Verify that an "Invalid expression" message appears in the status bar for a few seconds and then disappears.
+* Test fatal errors:
+  * Try to run the application on a non-existent or permission-denied ledger file.
   * Verify that the application starts up and displays a clear, full-screen error message explaining that the file could not be read.

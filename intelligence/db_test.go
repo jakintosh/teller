@@ -254,30 +254,32 @@ func TestFindTemplates(t *testing.T) {
 	}
 
 	if len(cityMarketTemplates) >= 1 {
-		// First template should be the most frequent (frequency 2)
 		firstTemplate := cityMarketTemplates[0]
 		if firstTemplate.Frequency != 2 {
 			t.Errorf("Expected first template frequency to be 2, got %d", firstTemplate.Frequency)
 		}
-
-		// Check that the accounts are correct (sorted: Assets:Checking, Expenses:Groceries)
-		expectedAccounts := []string{"Assets:Checking", "Expenses:Groceries"}
-		if len(firstTemplate.Accounts) != len(expectedAccounts) {
-			t.Errorf("Expected first template to have %d accounts, got %d", len(expectedAccounts), len(firstTemplate.Accounts))
-		} else {
-			for i, expected := range expectedAccounts {
-				if firstTemplate.Accounts[i] != expected {
-					t.Errorf("Expected first template account[%d] = '%s', got '%s'", i, expected, firstTemplate.Accounts[i])
-				}
-			}
+		expectedDebit := []string{"Expenses:Groceries"}
+		expectedCredit := []string{"Assets:Checking"}
+		if !equalSlices(firstTemplate.DebitAccounts, expectedDebit) {
+			t.Errorf("Expected debit accounts %v, got %v", expectedDebit, firstTemplate.DebitAccounts)
+		}
+		if !equalSlices(firstTemplate.CreditAccounts, expectedCredit) {
+			t.Errorf("Expected credit accounts %v, got %v", expectedCredit, firstTemplate.CreditAccounts)
 		}
 	}
 
 	if len(cityMarketTemplates) >= 2 {
-		// Second template should have frequency 1
 		secondTemplate := cityMarketTemplates[1]
 		if secondTemplate.Frequency != 1 {
 			t.Errorf("Expected second template frequency to be 1, got %d", secondTemplate.Frequency)
+		}
+		expectedDebit := []string{"Expenses:Alcohol", "Expenses:Groceries"}
+		expectedCredit := []string{"Assets:Credit Card"}
+		if !equalSlices(secondTemplate.DebitAccounts, expectedDebit) {
+			t.Errorf("Expected second debit accounts %v, got %v", expectedDebit, secondTemplate.DebitAccounts)
+		}
+		if !equalSlices(secondTemplate.CreditAccounts, expectedCredit) {
+			t.Errorf("Expected second credit accounts %v, got %v", expectedCredit, secondTemplate.CreditAccounts)
 		}
 	}
 
@@ -292,4 +294,16 @@ func TestFindTemplates(t *testing.T) {
 	if len(nonExistentTemplates) != 0 {
 		t.Errorf("Expected 0 templates for non-existent payee, got %d", len(nonExistentTemplates))
 	}
+}
+
+func equalSlices(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
