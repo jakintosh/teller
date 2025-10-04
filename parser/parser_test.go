@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -101,5 +103,46 @@ func TestParseFile(t *testing.T) {
 		if tx.Comment != "Awaiting shipment" {
 			t.Errorf("unexpected comment on Online Purchase: %q", tx.Comment)
 		}
+	}
+}
+
+func TestParsePostingAmountWithCurrencyBeforeSign(t *testing.T) {
+	ledger := "2024/08/15 * City Market\n" +
+		"    Expenses:Food:Groceries\n" +
+		"    Expenses:Food:Alcohol        $14.10\n" +
+		"    Liabilities:Apple Card       $-91.41\n"
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "city-market.ledger")
+	if err := os.WriteFile(path, []byte(ledger), 0o600); err != nil {
+		t.Fatalf("failed to write temp ledger: %v", err)
+	}
+
+	result, err := ParseFile(path)
+	if err != nil {
+		t.Fatalf("ParseFile returned error: %v", err)
+	}
+
+	if len(result.Issues) != 0 {
+		t.Fatalf("expected no parse issues, got %d: %+v", len(result.Issues), result.Issues)
+	}
+
+	if len(result.Transactions) != 1 {
+		t.Fatalf("expected 1 transaction, got %d", len(result.Transactions))
+	}
+
+	tx := result.Transactions[0]
+	if len(tx.Postings) != 3 {
+		t.Fatalf("expected 3 postings, got %d", len(tx.Postings))
+	}
+
+	if tx.Postings[0].Amount != "" {
+		t.Errorf("expected first posting amount to be elided, got %q", tx.Postings[0].Amount)
+	}
+	if tx.Postings[1].Amount != "14.10" {
+		t.Errorf("expected second posting amount to be 14.10, got %q", tx.Postings[1].Amount)
+	}
+	if tx.Postings[2].Amount != "-91.41" {
+		t.Errorf("expected third posting amount to be -91.41, got %q", tx.Postings[2].Amount)
 	}
 }

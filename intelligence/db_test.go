@@ -1,6 +1,7 @@
 package intelligence
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -216,6 +217,47 @@ func TestFindAccounts(t *testing.T) {
 				t.Errorf("For account prefix '%s': expected to find '%s' in results %v", test.prefix, expected, result)
 			}
 		}
+	}
+}
+
+func TestNewIntelligenceDBWithElidedPosting(t *testing.T) {
+	transactions := []core.Transaction{
+		{
+			Date:  time.Date(2024, 8, 15, 0, 0, 0, 0, time.UTC),
+			Payee: "City Market",
+			Postings: []core.Posting{
+				{Account: "Expenses:Food:Groceries", Amount: ""},
+				{Account: "Expenses:Food:Alcohol", Amount: "14.10"},
+				{Account: "Liabilities:Apple Card", Amount: "-91.41"},
+			},
+		},
+	}
+
+	db, report, err := NewIntelligenceDB(transactions)
+	if err != nil {
+		t.Fatalf("NewIntelligenceDB returned error: %v", err)
+	}
+
+	if len(report.Issues) != 0 {
+		t.Fatalf("expected no build issues, got %d: %v", len(report.Issues), report.Issues)
+	}
+
+	templates := db.FindTemplates("City Market")
+	if len(templates) != 1 {
+		t.Fatalf("expected 1 template for City Market, got %d", len(templates))
+	}
+
+	expectedDebit := []string{"Expenses:Food:Alcohol", "Expenses:Food:Groceries"}
+	expectedCredit := []string{"Liabilities:Apple Card"}
+
+	if !reflect.DeepEqual(templates[0].DebitAccounts, expectedDebit) {
+		t.Errorf("unexpected debit accounts: %+v", templates[0].DebitAccounts)
+	}
+	if !reflect.DeepEqual(templates[0].CreditAccounts, expectedCredit) {
+		t.Errorf("unexpected credit accounts: %+v", templates[0].CreditAccounts)
+	}
+	if templates[0].Frequency != 1 {
+		t.Errorf("expected template frequency 1, got %d", templates[0].Frequency)
 	}
 }
 

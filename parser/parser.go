@@ -42,7 +42,7 @@ func ParseFile(filePath string) (ParseResult, error) {
 	// Regex to match transaction start (date at beginning of line, optional cleared marker, optional comment)
 	dateRegex := regexp.MustCompile(`^(\d{4}[-/]\d{2}[-/]\d{2})\s+(?:(\*)\s+)?(.+?)(?:\s*;\s*(.*))?$`)
 	// Regex to match posting lines (indented with account, optional amount, optional comment)
-	postingRegex := regexp.MustCompile(`^\s+(.+?)(?:\s+([+-]?\$?\d+(?:\.\d{2})?))?(?:\s*;\s*(.*))?$`)
+	postingRegex := regexp.MustCompile(`^\s+(.+?)(?:\s+((?:[+-]?\$?|\$[+-]?)[0-9]+(?:\.[0-9]+)?))?(?:\s*;\s*(.*))?$`)
 
 	for scanner.Scan() {
 		lineNumber++
