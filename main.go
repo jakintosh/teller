@@ -23,15 +23,37 @@ func main() {
 	ledgerFile := os.Args[1]
 
 	// Parse the ledger file
-	transactions, err := parser.ParseFile(ledgerFile)
+	parseResult, err := parser.ParseFile(ledgerFile)
 	if err != nil {
 		log.Fatalf("Failed to parse ledger file '%s': %v", ledgerFile, err)
 	}
 
+	transactions := parseResult.Transactions
+
 	// Build intelligence database
-	db, err := intelligence.NewIntelligenceDB(transactions)
+	db, buildReport, err := intelligence.NewIntelligenceDB(transactions)
 	if err != nil {
 		log.Fatalf("Failed to create intelligence database: %v", err)
+	}
+
+	loadSummary := core.LoadSummary{
+		Transactions:    len(transactions),
+		UniquePayees:    buildReport.UniquePayees,
+		UniqueTemplates: buildReport.UniqueTemplates,
+	}
+
+	for _, issue := range parseResult.Issues {
+		loadSummary.Issues = append(loadSummary.Issues, core.LoadIssue{
+			Stage:   "parser",
+			Message: fmt.Sprintf("line %d: %s", issue.Line, issue.Message),
+		})
+	}
+
+	for _, msg := range buildReport.Issues {
+		loadSummary.Issues = append(loadSummary.Issues, core.LoadIssue{
+			Stage:   "intelligence",
+			Message: msg,
+		})
 	}
 
 	// Check for existing session and restore if available
@@ -55,7 +77,7 @@ func main() {
 	}
 
 	// Create and start the TUI
-	model := tui.NewModel(db, ledgerFile)
+	model := tui.NewModel(db, ledgerFile, loadSummary)
 	if len(previousBatch) > 0 {
 		model.SetBatch(previousBatch)
 	}

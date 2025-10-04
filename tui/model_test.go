@@ -36,9 +36,12 @@ func testDB(t *testing.T) *intelligence.IntelligenceDB {
 		},
 	}
 
-	db, err := intelligence.NewIntelligenceDB(transactions)
+	db, report, err := intelligence.NewIntelligenceDB(transactions)
 	if err != nil {
 		t.Fatalf("failed to build intelligence db: %v", err)
+	}
+	if len(report.Issues) != 0 {
+		t.Fatalf("unexpected build issues: %v", report.Issues)
 	}
 	return db
 }
@@ -47,9 +50,40 @@ func wait() {
 	time.Sleep(10 * time.Millisecond)
 }
 
+func TestBatchViewDisplaysLoadSummary(t *testing.T) {
+	db := testDB(t)
+	summary := core.LoadSummary{Transactions: 9, UniquePayees: 4, UniqueTemplates: 2}
+	model := NewModel(db, "ledger.dat", summary)
+	view := model.renderBatchView()
+	if !strings.Contains(view, "Data load: 9 transactions • 4 payees • 2 templates") {
+		t.Fatalf("batch view missing load summary: %q", view)
+	}
+	if !strings.Contains(view, "Load issues: none") {
+		t.Fatalf("batch view missing zero-issue line: %q", view)
+	}
+}
+
+func TestBatchViewDisplaysLoadIssues(t *testing.T) {
+	db := testDB(t)
+	summary := core.LoadSummary{
+		Transactions:    9,
+		UniquePayees:    4,
+		UniqueTemplates: 2,
+		Issues: []core.LoadIssue{
+			{Stage: "parser", Message: "line 3: invalid amount"},
+			{Stage: "intelligence", Message: "missing template"},
+		},
+	}
+	model := NewModel(db, "ledger.dat", summary)
+	view := model.renderBatchView()
+	if !strings.Contains(view, "Load issues: 2 (first: [PARSER] line 3: invalid amount)") {
+		t.Fatalf("batch view missing issue summary: %q", view)
+	}
+}
+
 func TestNewTransactionHighlightsDaySegment(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat")
+	model := NewModel(db, "ledger.dat", core.LoadSummary{})
 
 	if model.form.date.segment != dateSegmentDay {
 		t.Fatalf("expected initial date segment to default to day, got %v", model.form.date.segment)
@@ -63,7 +97,7 @@ func TestNewTransactionHighlightsDaySegment(t *testing.T) {
 
 func TestTransactionActionsStackedVertically(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat")
+	model := NewModel(db, "ledger.dat", core.LoadSummary{})
 	model.startNewTransaction()
 
 	view := model.renderTransactionView()
@@ -95,7 +129,7 @@ func TestTransactionFlowAddsBatchEntry(t *testing.T) {
 		t.Fatalf("create ledger file: %v", err)
 	}
 
-	model := NewModel(db, ledgerPath)
+	model := NewModel(db, ledgerPath, core.LoadSummary{})
 	program := tea.NewProgram(model, tea.WithoutRenderer())
 
 	done := make(chan struct{})
@@ -112,24 +146,27 @@ func TestTransactionFlowAddsBatchEntry(t *testing.T) {
 	}
 
 	send(keyRunes('n')) // start new transaction
-	send(tea.KeyMsg{Type: tea.KeyTab})
+	send(tea.KeyMsg{Type: tea.KeyTab}) // date -> cleared
+	send(tea.KeyMsg{Type: tea.KeyTab}) // cleared -> payee
 	for _, r := range "Grocery Store" {
 		send(keyRunes(r))
 	}
-	send(tea.KeyMsg{Type: tea.KeyTab}) // template button
-	send(tea.KeyMsg{Type: tea.KeyTab}) // debit account
+	send(tea.KeyMsg{Type: tea.KeyTab}) // payee -> comment
+	send(tea.KeyMsg{Type: tea.KeyTab}) // comment -> template button
+	send(tea.KeyMsg{Type: tea.KeyTab}) // template button -> debit account
 	for _, r := range "Expenses:Food:Groceries" {
 		send(keyRunes(r))
 	}
-	send(tea.KeyMsg{Type: tea.KeyTab}) // debit amount
+	send(tea.KeyMsg{Type: tea.KeyTab}) // debit account -> amount
 	for _, r := range "100" {
 		send(keyRunes(r))
 	}
-	send(tea.KeyMsg{Type: tea.KeyTab}) // move to credit account
+	send(tea.KeyMsg{Type: tea.KeyTab}) // debit amount -> comment
+	send(tea.KeyMsg{Type: tea.KeyTab}) // debit comment -> credit account
 	for _, r := range "Assets:Checking" {
 		send(keyRunes(r))
 	}
-	send(tea.KeyMsg{Type: tea.KeyTab}) // credit amount field
+	send(tea.KeyMsg{Type: tea.KeyTab}) // credit account -> amount field
 	send(keyRunes('b'))                // balance shortcut fills value
 	send(tea.KeyMsg{Type: tea.KeyCtrlC})
 
@@ -149,20 +186,123 @@ func TestTransactionFlowAddsBatchEntry(t *testing.T) {
 	if tx.Payee != "Grocery Store" {
 		t.Fatalf("unexpected payee: %s", tx.Payee)
 	}
+	if !tx.Cleared {
+		t.Fatalf("expected new transactions to default to cleared")
+	}
+	if tx.Comment != "" {
+		t.Fatalf("expected transaction comment to be empty, got %q", tx.Comment)
+	}
 	if len(tx.Postings) != 2 {
 		t.Fatalf("expected 2 postings, got %d", len(tx.Postings))
 	}
 	if tx.Postings[0].Account != "Expenses:Food:Groceries" || tx.Postings[0].Amount != "100.00" {
 		t.Fatalf("unexpected debit posting: %+v", tx.Postings[0])
 	}
+	if tx.Postings[0].Comment != "" {
+		t.Fatalf("expected debit comment to be empty, got %q", tx.Postings[0].Comment)
+	}
 	if tx.Postings[1].Account != "Assets:Checking" || tx.Postings[1].Amount != "-100.00" {
 		t.Fatalf("unexpected credit posting: %+v", tx.Postings[1])
+	}
+	if tx.Postings[1].Comment != "" {
+		t.Fatalf("expected credit comment to be empty, got %q", tx.Postings[1].Comment)
+	}
+}
+
+func TestTransactionCapturesCommentsAndCleared(t *testing.T) {
+	db := testDB(t)
+
+	tempDir := t.TempDir()
+	ledgerPath := filepath.Join(tempDir, "ledger.dat")
+	if err := os.WriteFile(ledgerPath, []byte(""), 0644); err != nil {
+		t.Fatalf("create ledger file: %v", err)
+	}
+
+	model := NewModel(db, ledgerPath, core.LoadSummary{})
+	program := tea.NewProgram(model, tea.WithoutRenderer())
+
+	done := make(chan struct{})
+	var runErr error
+	go func() {
+		_, runErr = program.Run()
+		close(done)
+	}()
+
+	wait()
+	send := func(msg tea.KeyMsg) {
+		program.Send(msg)
+		wait()
+	}
+
+	send(keyRunes('n'))                           // start new transaction
+	send(tea.KeyMsg{Type: tea.KeyTab})            // date -> cleared
+	send(tea.KeyMsg{Type: tea.KeySpace})          // toggle cleared off
+	send(tea.KeyMsg{Type: tea.KeyTab})            // cleared -> payee
+	for _, r := range "Acme Supplies" {
+		send(keyRunes(r))
+	}
+	send(tea.KeyMsg{Type: tea.KeyTab})            // payee -> comment
+	for _, r := range "Monthly restock" {
+		send(keyRunes(r))
+	}
+	send(tea.KeyMsg{Type: tea.KeyTab})            // comment -> template button
+	send(tea.KeyMsg{Type: tea.KeyTab})            // template -> debit account
+	for _, r := range "Expenses:Office:Supplies" {
+		send(keyRunes(r))
+	}
+	send(tea.KeyMsg{Type: tea.KeyTab})            // debit account -> amount
+	for _, r := range "123.45" {
+		send(keyRunes(r))
+	}
+	send(tea.KeyMsg{Type: tea.KeyTab})            // debit amount -> comment
+	for _, r := range "Office restock" {
+		send(keyRunes(r))
+	}
+	send(tea.KeyMsg{Type: tea.KeyTab})            // debit comment -> credit account
+	for _, r := range "Assets:Checking" {
+		send(keyRunes(r))
+	}
+	send(tea.KeyMsg{Type: tea.KeyTab})            // credit account -> amount
+	send(keyRunes('b'))                           // balance amount
+	send(tea.KeyMsg{Type: tea.KeyTab})            // credit amount -> comment
+	for _, r := range "Paid via checking" {
+		send(keyRunes(r))
+	}
+	send(tea.KeyMsg{Type: tea.KeyCtrlC})          // confirm transaction
+
+	wait()
+	program.Quit()
+	<-done
+
+	if runErr != nil {
+		t.Fatalf("program run error: %v", runErr)
+	}
+
+	if len(model.batch) != 1 {
+		t.Fatalf("expected 1 transaction in batch, got %d", len(model.batch))
+	}
+
+	tx := model.batch[0]
+	if tx.Cleared {
+		t.Fatalf("expected transaction to be marked uncleared")
+	}
+	if tx.Comment != "Monthly restock" {
+		t.Fatalf("unexpected transaction comment: %q", tx.Comment)
+	}
+	if len(tx.Postings) != 2 {
+		t.Fatalf("expected 2 postings, got %d", len(tx.Postings))
+	}
+	if tx.Postings[0].Comment != "Office restock" {
+		t.Fatalf("unexpected debit comment: %q", tx.Postings[0].Comment)
+	}
+	if tx.Postings[1].Comment != "Paid via checking" {
+		t.Fatalf("unexpected credit comment: %q", tx.Postings[1].Comment)
 	}
 }
 
 func TestDeleteLineKeepsAtLeastOne(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "test-ledger.dat")
+	model := NewModel(db, "test-ledger.dat", core.LoadSummary{})
 	model.startNewTransaction()
 	model.addLine(sectionDebit, false)
 	model.focusSection(sectionDebit, 1, focusSectionAccount)
@@ -176,7 +316,7 @@ func TestDeleteLineKeepsAtLeastOne(t *testing.T) {
 
 func TestBalanceShortcutFillsCreditDifference(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat")
+	model := NewModel(db, "ledger.dat", core.LoadSummary{})
 	model.startNewTransaction()
 
 	model.form.debitLines[0].amountInput.SetValue("120")
@@ -193,7 +333,7 @@ func TestBalanceShortcutFillsCreditDifference(t *testing.T) {
 
 func TestTemplateSelectionPopulatesSections(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat")
+	model := NewModel(db, "ledger.dat", core.LoadSummary{})
 	model.startNewTransaction()
 	model.templateOptions = []intelligence.TemplateRecord{{
 		DebitAccounts:  []string{"Expenses:Rent", "Expenses:Utilities"},
@@ -221,7 +361,7 @@ func TestTemplateSelectionPopulatesSections(t *testing.T) {
 
 func TestTemplateViewDisplaysAccountsVertically(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat")
+	model := NewModel(db, "ledger.dat", core.LoadSummary{})
 	model.templateOptions = []intelligence.TemplateRecord{{
 		DebitAccounts:  []string{"Expenses:Rent", "Expenses:Utilities"},
 		CreditAccounts: []string{"Assets:Checking"},
@@ -244,7 +384,7 @@ func TestTemplateViewDisplaysAccountsVertically(t *testing.T) {
 
 func TestTemplateViewScrollsWithCursor(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat")
+	model := NewModel(db, "ledger.dat", core.LoadSummary{})
 
 	for i := 0; i < maxTemplateDisplay+1; i++ {
 		model.templateOptions = append(model.templateOptions, intelligence.TemplateRecord{

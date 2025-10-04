@@ -14,8 +14,10 @@ This document outlines the technical requirements for the Ledger Helper TUI appl
 2.1. Ledger File Parser:
 2.1.1. The application MUST implement a parser capable of reading a ledger file on startup.
 2.1.2. The parser's primary function is to extract transaction details: date, payee/description, and a list of posting accounts with their associated amounts.
-2.1.3. The parser MAY ignore non-essential ledger syntax for the MVP, including comments, tags, and complex directives, to ensure performance.
+2.1.3. The parser MUST recognize transaction-level cleared markers (a `*` between the date and payee) and inline comments introduced with `;` on both the transaction header and individual postings.
 2.1.4. The parsing process SHOULD run as a background task to avoid blocking the UI on startup.
+2.1.5. The parser MUST record non-fatal issues (e.g., malformed lines, missing data) with line numbers so they can be surfaced to the user after startup.
+2.1.6. The parser MAY continue to ignore other non-essential ledger directives (e.g., automated price entries, metadata tags) to preserve performance for the MVP.
 2.2. In-Memory Data Store ("Intelligence DB"):
 2.2.1. The application MUST build an in-memory model from the parsed ledger data to power its suggestion features.
 2.2.2. Accounts: All unique account names MUST be stored in a Trie data structure to facilitate efficient, segment-by-segment hierarchical searching (e.g., Expenses:Food:Groceries).
@@ -26,6 +28,7 @@ This document outlines the technical requirements for the Ledger Helper TUI appl
 2.2.4.3. The system SHALL calculate the frequency of each template for a given payee.
 2.2.4.4. The system MUST be able to retrieve a list of templates for a payee, ordered from most to least frequent.
 2.2.4.5. When a transaction omits an amount for one posting, the system MUST infer the missing value from the other legs and classify the posting on the correct debit or credit side before recording the template.
+2.2.6. The intelligence build step MUST expose metrics about the discovered payees/templates and capture any analysis issues for display in the UI.
 
 ## **3\. Core Features & Business Logic**
 
@@ -37,6 +40,7 @@ This document outlines the technical requirements for the Ledger Helper TUI appl
 3.2. Transaction Generation:
 3.2.1. The application MUST be able to convert its internal transaction representation into a valid, formatted ledger-cli text entry.
 3.2.2. The output formatting MUST adhere to standard ledger practices, including indented postings and aligned currency amounts.
+3.2.3. Generated transactions MUST emit the cleared marker and inline comments in the same positions recognized by the parser (header comments adjacent to the payee, posting comments following the amount).
 
 ## **4\. User Interface (TUI) & State Management**
 
@@ -46,6 +50,8 @@ This document outlines the technical requirements for the Ledger Helper TUI appl
 4.2. Batch Entry Workflow:
 4.2.1. The UI MUST present a "Batch Review" screen displaying all transactions created in the current session.
 4.2.2. Users MUST be able to add new transactions to the batch and select existing transactions from the batch for editing.
+4.2.3. The Batch Review screen MUST display a concise startup summary showing parsed transaction counts, unique payees/templates, and whether any load issues were detected.
+4.2.4. The Transaction Entry form MUST provide inputs for a cleared toggle, an optional transaction-level comment, and optional posting-level comments positioned adjacent to each amount field.
 4.3. Autocomplete Functionality:
 4.3.1. The TUI MUST provide autocomplete suggestions in all payee and account input fields.
 4.3.2. Single Suggestion: If only one match is found, the remainder of the text MUST be displayed in a dimmed, "ghost text" style. The suggestion MUST be accepted by pressing the Tab key.

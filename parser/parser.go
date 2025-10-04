@@ -11,29 +11,46 @@ import (
 	"git.sr.ht/~jakintosh/teller/core"
 )
 
+// ParseIssue captures a non-fatal problem encountered while reading the ledger file.
+type ParseIssue struct {
+	Line    int
+	Message string
+}
+
+// ParseResult contains the parsed transactions along with any issues that occurred.
+type ParseResult struct {
+	Transactions []core.Transaction
+	Issues       []ParseIssue
+}
+
 // ParseFile reads a ledger-cli file and converts it into Transaction structs.
-func ParseFile(filePath string) ([]core.Transaction, error) {
+func ParseFile(filePath string) (ParseResult, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file: %w", err)
+		return ParseResult{}, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
 
-	var transactions []core.Transaction
-	scanner := bufio.NewScanner(file)
+	var (
+		transactions       []core.Transaction
+		issues             []ParseIssue
+		scanner            = bufio.NewScanner(file)
+		lineNumber         = 0
+		currentTransaction *core.Transaction
+	)
 
-	// Regex to match transaction start (date at beginning of line)
-	dateRegex := regexp.MustCompile(`^(\d{4}[-/]\d{2}[-/]\d{2})\s+(.+)`)
-	// Regex to match posting lines (indented with account and optional amount)
-	postingRegex := regexp.MustCompile(`^\s+([^;]+?)(?:\s+([+-]?\$?\d+(?:\.\d{2})?))?\s*(?:;.*)?$`)
-
-	var currentTransaction *core.Transaction
+	// Regex to match transaction start (date at beginning of line, optional cleared marker, optional comment)
+	dateRegex := regexp.MustCompile(`^(\d{4}[-/]\d{2}[-/]\d{2})\s+(?:(\*)\s+)?(.+?)(?:\s*;\s*(.*))?$`)
+	// Regex to match posting lines (indented with account, optional amount, optional comment)
+	postingRegex := regexp.MustCompile(`^\s+(.+?)(?:\s+([+-]?\$?\d+(?:\.\d{2})?))?(?:\s*;\s*(.*))?$`)
 
 	for scanner.Scan() {
+		lineNumber++
 		line := scanner.Text()
 
+		trimmed := strings.TrimSpace(line)
 		// Skip empty lines and comment lines
-		if strings.TrimSpace(line) == "" || strings.HasPrefix(strings.TrimSpace(line), ";") {
+		if trimmed == "" || strings.HasPrefix(trimmed, ";") {
 			continue
 		}
 
@@ -47,8 +64,6 @@ func ParseFile(filePath string) ([]core.Transaction, error) {
 			// Parse date
 			dateStr := matches[1]
 			var date time.Time
-
-			// Try different date formats
 			formats := []string{"2006-01-02", "2006/01/02"}
 			for _, format := range formats {
 				if d, err := time.Parse(format, dateStr); err == nil {
@@ -56,40 +71,73 @@ func ParseFile(filePath string) ([]core.Transaction, error) {
 					break
 				}
 			}
+			if date.IsZero() {
+				issues = append(issues, ParseIssue{
+					Line:    lineNumber,
+					Message: fmt.Sprintf("unrecognized date format '%s'", dateStr),
+				})
+			}
 
-			// Start new transaction
+			payee := strings.TrimSpace(matches[3])
+			comment := ""
+			if len(matches) > 4 {
+				comment = strings.TrimSpace(matches[4])
+			}
 			currentTransaction = &core.Transaction{
 				Date:     date,
-				Payee:    strings.TrimSpace(matches[2]),
+				Payee:    payee,
+				Comment:  comment,
+				Cleared:  matches[2] == "*",
 				Postings: []core.Posting{},
 			}
-		} else if currentTransaction != nil {
-			// Check if it's a posting line
-			if matches := postingRegex.FindStringSubmatch(line); matches != nil {
-				account := strings.TrimSpace(matches[1])
-				amount := ""
-				if len(matches) > 2 && matches[2] != "" {
-					// Clean up amount (remove $ sign if present)
-					amount = strings.TrimSpace(strings.Replace(matches[2], "$", "", -1))
-				}
-
-				posting := core.Posting{
-					Account: account,
-					Amount:  amount,
-				}
-				currentTransaction.Postings = append(currentTransaction.Postings, posting)
-			}
+			continue
 		}
+
+		if currentTransaction == nil {
+			issues = append(issues, ParseIssue{
+				Line:    lineNumber,
+				Message: "encountered posting before any transaction date",
+			})
+			continue
+		}
+
+		if matches := postingRegex.FindStringSubmatch(line); matches != nil {
+			account := strings.TrimSpace(matches[1])
+			if account == "" {
+				issues = append(issues, ParseIssue{Line: lineNumber, Message: "posting missing account name"})
+				continue
+			}
+			amount := ""
+			if len(matches) > 2 && matches[2] != "" {
+				amount = strings.TrimSpace(strings.Replace(matches[2], "$", "", -1))
+			}
+			comment := ""
+			if len(matches) > 3 {
+				comment = strings.TrimSpace(matches[3])
+			}
+
+			posting := core.Posting{
+				Account: account,
+				Amount:  amount,
+				Comment: comment,
+			}
+			currentTransaction.Postings = append(currentTransaction.Postings, posting)
+			continue
+		}
+
+		issues = append(issues, ParseIssue{
+			Line:    lineNumber,
+			Message: fmt.Sprintf("unsupported or malformed line: %q", trimmed),
+		})
 	}
 
-	// Don't forget the last transaction
 	if currentTransaction != nil {
 		transactions = append(transactions, *currentTransaction)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading file: %w", err)
+		return ParseResult{}, fmt.Errorf("error reading file: %w", err)
 	}
 
-	return transactions, nil
+	return ParseResult{Transactions: transactions, Issues: issues}, nil
 }

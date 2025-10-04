@@ -44,13 +44,19 @@ func TestNewIntelligenceDB(t *testing.T) {
 		},
 	}
 
-	db, err := NewIntelligenceDB(transactions)
+	expectedPayeeCount := 3 // Super Grocery Store, Gas Station, Coffee Shop
+	db, report, err := NewIntelligenceDB(transactions)
 	if err != nil {
 		t.Fatalf("Failed to create IntelligenceDB: %v", err)
 	}
+	if len(report.Issues) != 0 {
+		t.Fatalf("expected no build issues, got %d: %v", len(report.Issues), report.Issues)
+	}
+	if report.UniquePayees != expectedPayeeCount {
+		t.Fatalf("expected UniquePayees to be %d, got %d", expectedPayeeCount, report.UniquePayees)
+	}
 
 	// Check that we have the correct number of unique payees
-	expectedPayeeCount := 3 // Super Grocery Store, Gas Station, Coffee Shop
 	if len(db.Payees) != expectedPayeeCount {
 		t.Errorf("Expected %d unique payees, got %d", expectedPayeeCount, len(db.Payees))
 	}
@@ -76,15 +82,18 @@ func TestNewIntelligenceDB(t *testing.T) {
 func TestFindPayees(t *testing.T) {
 	// Create mock transactions
 	transactions := []core.Transaction{
-		{Payee: "City Hardware"},
-		{Payee: "City Market"},
-		{Payee: "Coffee Shop"},
-		{Payee: "Gas Station"},
+		{Payee: "City Hardware", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "1"}, {Account: "Income:Misc", Amount: "-1"}}},
+		{Payee: "City Market", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "1"}, {Account: "Income:Misc", Amount: "-1"}}},
+		{Payee: "Coffee Shop", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "1"}, {Account: "Income:Misc", Amount: "-1"}}},
+		{Payee: "Gas Station", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "1"}, {Account: "Income:Misc", Amount: "-1"}}},
 	}
 
-	db, err := NewIntelligenceDB(transactions)
+	db, report, err := NewIntelligenceDB(transactions)
 	if err != nil {
 		t.Fatalf("Failed to create IntelligenceDB: %v", err)
+	}
+	if len(report.Issues) != 0 {
+		t.Fatalf("expected no build issues, got %d: %v", len(report.Issues), report.Issues)
 	}
 
 	// Test prefix matching
@@ -158,9 +167,12 @@ func TestFindAccounts(t *testing.T) {
 		},
 	}
 
-	db, err := NewIntelligenceDB(transactions)
+	db, report, err := NewIntelligenceDB(transactions)
 	if err != nil {
 		t.Fatalf("Failed to create IntelligenceDB: %v", err)
+	}
+	if len(report.Issues) != 0 {
+		t.Fatalf("expected no build issues, got %d: %v", len(report.Issues), report.Issues)
 	}
 
 	// Test account prefix searches
@@ -242,9 +254,12 @@ func TestFindTemplates(t *testing.T) {
 		},
 	}
 
-	db, err := NewIntelligenceDB(transactions)
+	db, report, err := NewIntelligenceDB(transactions)
 	if err != nil {
 		t.Fatalf("Failed to create IntelligenceDB: %v", err)
+	}
+	if len(report.Issues) != 0 {
+		t.Fatalf("expected no build issues, got %d: %v", len(report.Issues), report.Issues)
 	}
 
 	// Test City Market templates
@@ -308,9 +323,12 @@ func TestTemplatesIncludeElidedAmounts(t *testing.T) {
 		},
 	}
 
-	db, err := NewIntelligenceDB(transactions)
+	db, report, err := NewIntelligenceDB(transactions)
 	if err != nil {
 		t.Fatalf("Failed to create IntelligenceDB: %v", err)
+	}
+	if len(report.Issues) != 0 {
+		t.Fatalf("expected no build issues, got %d: %v", len(report.Issues), report.Issues)
 	}
 
 	templates := db.FindTemplates("City Market")

@@ -6,9 +6,15 @@ import (
 )
 
 func TestParseFile(t *testing.T) {
-	transactions, err := ParseFile("../sample.ledger")
+	result, err := ParseFile("../sample.ledger")
 	if err != nil {
 		t.Fatalf("Failed to parse sample ledger file: %v", err)
+	}
+
+	transactions := result.Transactions
+
+	if len(result.Issues) != 0 {
+		t.Fatalf("expected no parsing issues for sample ledger, got %d: %+v", len(result.Issues), result.Issues)
 	}
 
 	// Check we got the expected number of transactions
@@ -29,6 +35,14 @@ func TestParseFile(t *testing.T) {
 			t.Errorf("Expected payee 'Super Grocery Store', got '%s'", tx.Payee)
 		}
 
+		if !tx.Cleared {
+			t.Errorf("expected first transaction to be cleared")
+		}
+
+		if tx.Comment != "Weekly groceries run" {
+			t.Errorf("unexpected transaction comment: %q", tx.Comment)
+		}
+
 		if len(tx.Postings) != 2 {
 			t.Errorf("Expected 2 postings, got %d", len(tx.Postings))
 		}
@@ -39,6 +53,12 @@ func TestParseFile(t *testing.T) {
 			}
 			if tx.Postings[0].Amount != "85.42" {
 				t.Errorf("Expected first amount '85.42', got '%s'", tx.Postings[0].Amount)
+			}
+			if tx.Postings[0].Comment != "Pantry staples" {
+				t.Errorf("unexpected posting comment: %q", tx.Postings[0].Comment)
+			}
+			if tx.Postings[1].Comment != "" {
+				t.Errorf("expected second posting comment to be empty, got %q", tx.Postings[1].Comment)
 			}
 		}
 	}
@@ -66,6 +86,20 @@ func TestParseFile(t *testing.T) {
 		expectedPostings := 4
 		if len(tx.Postings) != expectedPostings {
 			t.Errorf("Expected %d postings for multi-split transaction, got %d", expectedPostings, len(tx.Postings))
+		}
+	}
+
+	// Test uncleared transaction
+	if len(transactions) > 5 {
+		tx := transactions[5]
+		if tx.Payee != "Online Purchase" {
+			t.Fatalf("expected sixth transaction to be Online Purchase, got %s", tx.Payee)
+		}
+		if tx.Cleared {
+			t.Errorf("expected Online Purchase to be not cleared")
+		}
+		if tx.Comment != "Awaiting shipment" {
+			t.Errorf("unexpected comment on Online Purchase: %q", tx.Comment)
 		}
 	}
 }

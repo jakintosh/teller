@@ -49,10 +49,13 @@ const (
 
 const (
 	focusDate focusedField = iota
+	focusCleared
 	focusPayee
+	focusComment
 	focusTemplateButton
 	focusSectionAccount
 	focusSectionAmount
+	focusSectionComment
 )
 
 const (
@@ -69,6 +72,7 @@ const (
 type Model struct {
 	db             *intelligence.IntelligenceDB
 	ledgerFilePath string
+	loadSummary    core.LoadSummary
 
 	batch       []core.Transaction
 	cursor      int
@@ -90,7 +94,9 @@ type Model struct {
 
 type transactionForm struct {
 	date           dateField
+	cleared        bool
 	payeeInput     textinput.Model
+	commentInput   textinput.Model
 	debitLines     []postingLine
 	creditLines    []postingLine
 	focusedField   focusedField
@@ -104,6 +110,7 @@ type transactionForm struct {
 type postingLine struct {
 	accountInput textinput.Model
 	amountInput  textinput.Model
+	commentInput textinput.Model
 }
 
 type dateField struct {
@@ -114,12 +121,13 @@ type dateField struct {
 	buffer  string
 }
 
-func NewModel(db *intelligence.IntelligenceDB, ledgerFilePath string) *Model {
+func NewModel(db *intelligence.IntelligenceDB, ledgerFilePath string, summary core.LoadSummary) *Model {
 	m := &Model{
 		db:             db,
 		ledgerFilePath: ledgerFilePath,
 		currentView:    viewBatch,
 		editingIndex:   -1,
+		loadSummary:    summary,
 	}
 	m.resetForm(time.Now())
 	return m
@@ -155,13 +163,18 @@ func newTransactionForm(baseDate time.Time) transactionForm {
 	date.segment = dateSegmentDay
 
 	payee := newTextInput("Payee")
+	comment := newTextInput("Comment")
+	comment.ShowSuggestions = false
+	comment.Width = 60
 
 	debit := []postingLine{newPostingLine()}
 	credit := []postingLine{newPostingLine()}
 
 	return transactionForm{
 		date:           date,
+		cleared:        true,
 		payeeInput:     payee,
+		commentInput:   comment,
 		debitLines:     debit,
 		creditLines:    credit,
 		focusedField:   focusDate,
@@ -187,7 +200,10 @@ func newPostingLine() postingLine {
 	account := newTextInput("Account")
 	amount := newTextInput("Amount")
 	amount.ShowSuggestions = false
-	return postingLine{accountInput: account, amountInput: amount}
+	comment := newTextInput("Comment")
+	comment.ShowSuggestions = false
+	comment.Width = 30
+	return postingLine{accountInput: account, amountInput: amount, commentInput: comment}
 }
 
 func (d *dateField) setTime(t time.Time) {
@@ -416,6 +432,10 @@ func (m *Model) updateTransactionView(msg tea.KeyMsg) tea.Cmd {
 			return nil
 		}
 	}
+	if (msg.Type == tea.KeySpace || (msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == ' ')) && m.form.focusedField == focusCleared {
+		m.form.cleared = !m.form.cleared
+		return nil
+	}
 
 	switch msg.String() {
 	case "ctrl+q":
@@ -531,9 +551,15 @@ func (m *Model) evaluateInput(input *textinput.Model) bool {
 func (m *Model) advanceFocus() {
 	switch m.form.focusedField {
 	case focusDate:
+		m.form.focusedField = focusCleared
+	case focusCleared:
 		m.form.focusedField = focusPayee
 		m.form.payeeInput.Focus()
 	case focusPayee:
+		m.form.payeeInput.Blur()
+		m.form.focusedField = focusComment
+		m.form.commentInput.Focus()
+	case focusComment:
 		m.focusTemplateButton()
 		m.refreshTemplateOptions()
 	case focusTemplateButton:
@@ -545,6 +571,15 @@ func (m *Model) advanceFocus() {
 			m.form.focusedField = focusSectionAmount
 		}
 	case focusSectionAmount:
+		if line := m.currentLine(); line != nil {
+			line.amountInput.Blur()
+			line.commentInput.Focus()
+			m.form.focusedField = focusSectionComment
+		}
+	case focusSectionComment:
+		if line := m.currentLine(); line != nil {
+			line.commentInput.Blur()
+		}
 		if m.form.focusedSection == sectionDebit {
 			if m.form.focusedIndex < len(m.form.debitLines)-1 {
 				m.focusSection(sectionDebit, m.form.focusedIndex+1, focusSectionAccount)
@@ -565,16 +600,23 @@ func (m *Model) advanceFocus() {
 
 func (m *Model) retreatFocus() {
 	switch m.form.focusedField {
+	case focusCleared:
+		m.form.focusedField = focusDate
 	case focusPayee:
 		m.form.payeeInput.Blur()
 		m.form.focusedField = focusDate
-	case focusTemplateButton:
+	case focusComment:
+		m.form.commentInput.Blur()
 		m.form.focusedField = focusPayee
 		m.form.payeeInput.Focus()
+	case focusTemplateButton:
+		m.form.focusedField = focusComment
+		m.form.commentInput.Focus()
 	case focusSectionAccount:
 		if m.form.focusedSection == sectionDebit {
 			if m.form.focusedIndex == 0 {
-				m.focusTemplateButton()
+				m.form.focusedField = focusComment
+				m.form.commentInput.Focus()
 			} else {
 				m.focusSection(sectionDebit, m.form.focusedIndex-1, focusSectionAmount)
 			}
@@ -583,8 +625,8 @@ func (m *Model) retreatFocus() {
 				if len(m.form.debitLines) > 0 {
 					m.focusSection(sectionDebit, len(m.form.debitLines)-1, focusSectionAmount)
 				} else {
-					m.form.focusedField = focusPayee
-					m.form.payeeInput.Focus()
+					m.form.focusedField = focusComment
+					m.form.commentInput.Focus()
 				}
 			} else {
 				m.focusSection(sectionCredit, m.form.focusedIndex-1, focusSectionAmount)
@@ -592,6 +634,8 @@ func (m *Model) retreatFocus() {
 		}
 	case focusSectionAmount:
 		m.focusSection(m.form.focusedSection, m.form.focusedIndex, focusSectionAccount)
+	case focusSectionComment:
+		m.focusSection(m.form.focusedSection, m.form.focusedIndex, focusSectionAmount)
 	default:
 		m.form.focusedField = focusDate
 	}
@@ -616,10 +660,16 @@ func (m *Model) focusSection(section sectionType, index int, field focusedField)
 	m.form.focusedIndex = index
 	m.form.focusedField = field
 	if line := m.currentLine(); line != nil {
-		if field == focusSectionAccount {
+		line.accountInput.Blur()
+		line.amountInput.Blur()
+		line.commentInput.Blur()
+		switch field {
+		case focusSectionAccount:
 			line.accountInput.Focus()
-		} else {
+		case focusSectionAmount:
 			line.amountInput.Focus()
+		case focusSectionComment:
+			line.commentInput.Focus()
 		}
 	}
 }
@@ -633,9 +683,13 @@ func (m *Model) blurCurrent() {
 	if line := m.currentLine(); line != nil {
 		line.accountInput.Blur()
 		line.amountInput.Blur()
+		line.commentInput.Blur()
 	}
 	if m.form.focusedField == focusPayee {
 		m.form.payeeInput.Blur()
+	}
+	if m.form.focusedField == focusComment {
+		m.form.commentInput.Blur()
 	}
 }
 
@@ -654,14 +708,14 @@ func (m *Model) currentLine() *postingLine {
 }
 
 func (m *Model) lineHasFocus(section sectionType, index int) bool {
-	if m.form.focusedField != focusSectionAccount && m.form.focusedField != focusSectionAmount {
+	if m.form.focusedField != focusSectionAccount && m.form.focusedField != focusSectionAmount && m.form.focusedField != focusSectionComment {
 		return false
 	}
 	return m.form.focusedSection == section && m.form.focusedIndex == index
 }
 
 func (m *Model) hasActiveLine() bool {
-	if m.form.focusedField != focusSectionAccount && m.form.focusedField != focusSectionAmount {
+	if m.form.focusedField != focusSectionAccount && m.form.focusedField != focusSectionAmount && m.form.focusedField != focusSectionComment {
 		return false
 	}
 	return m.currentLine() != nil
@@ -700,7 +754,13 @@ func (m *Model) handleEnterKey() bool {
 	case focusDate:
 		m.advanceFocus()
 		return true
+	case focusCleared:
+		m.form.cleared = !m.form.cleared
+		return true
 	case focusPayee:
+		m.advanceFocus()
+		return true
+	case focusComment:
 		m.advanceFocus()
 		return true
 	case focusTemplateButton:
@@ -716,6 +776,9 @@ func (m *Model) handleEnterKey() bool {
 			}
 		}
 		return true
+	case focusSectionComment:
+		m.advanceFocus()
+		return true
 	}
 	return false
 }
@@ -725,6 +788,10 @@ func (m *Model) updateFocusedInput(msg tea.KeyMsg) tea.Cmd {
 	case focusPayee:
 		var cmd tea.Cmd
 		m.form.payeeInput, cmd = m.form.payeeInput.Update(msg)
+		return cmd
+	case focusComment:
+		var cmd tea.Cmd
+		m.form.commentInput, cmd = m.form.commentInput.Update(msg)
 		return cmd
 	case focusSectionAccount:
 		if line := m.currentLine(); line != nil {
@@ -736,6 +803,12 @@ func (m *Model) updateFocusedInput(msg tea.KeyMsg) tea.Cmd {
 		if line := m.currentLine(); line != nil {
 			var cmd tea.Cmd
 			line.amountInput, cmd = line.amountInput.Update(msg)
+			return cmd
+		}
+	case focusSectionComment:
+		if line := m.currentLine(); line != nil {
+			var cmd tea.Cmd
+			line.commentInput, cmd = line.commentInput.Update(msg)
 			return cmd
 		}
 	}
@@ -768,6 +841,8 @@ func (m *Model) currentTextInput() *textinput.Model {
 	switch m.form.focusedField {
 	case focusPayee:
 		return &m.form.payeeInput
+	case focusComment:
+		return &m.form.commentInput
 	case focusSectionAccount:
 		if line := m.currentLine(); line != nil {
 			return &line.accountInput
@@ -775,6 +850,10 @@ func (m *Model) currentTextInput() *textinput.Model {
 	case focusSectionAmount:
 		if line := m.currentLine(); line != nil {
 			return &line.amountInput
+		}
+	case focusSectionComment:
+		if line := m.currentLine(); line != nil {
+			return &line.commentInput
 		}
 	}
 	return nil
@@ -899,8 +978,11 @@ func (m *Model) startEditingTransaction(index int) {
 	tx := m.batch[index]
 	m.resetForm(tx.Date)
 	m.editingIndex = index
+	m.form.cleared = tx.Cleared
 	m.form.payeeInput.SetValue(tx.Payee)
 	m.form.payeeInput.CursorEnd()
+	m.form.commentInput.SetValue(tx.Comment)
+	m.form.commentInput.CursorEnd()
 	m.refreshTemplateOptions()
 
 	m.form.debitLines = nil
@@ -915,6 +997,8 @@ func (m *Model) startEditingTransaction(index int) {
 		line.accountInput.CursorEnd()
 		line.amountInput.SetValue(amount.Abs().StringFixed(2))
 		line.amountInput.CursorEnd()
+		line.commentInput.SetValue(posting.Comment)
+		line.commentInput.CursorEnd()
 		if amount.Sign() >= 0 {
 			m.form.debitLines = append(m.form.debitLines, line)
 		} else {
@@ -1091,6 +1175,7 @@ func (m *Model) confirmTransaction() bool {
 		postings = append(postings, core.Posting{
 			Account: account,
 			Amount:  amount.StringFixed(2),
+			Comment: strings.TrimSpace(line.commentInput.Value()),
 		})
 	}
 	for i := range m.form.creditLines {
@@ -1103,6 +1188,7 @@ func (m *Model) confirmTransaction() bool {
 		postings = append(postings, core.Posting{
 			Account: account,
 			Amount:  amount.Neg().StringFixed(2),
+			Comment: strings.TrimSpace(line.commentInput.Value()),
 		})
 	}
 
@@ -1114,6 +1200,8 @@ func (m *Model) confirmTransaction() bool {
 	tx := core.Transaction{
 		Date:     date,
 		Payee:    m.form.payeeInput.Value(),
+		Comment:  strings.TrimSpace(m.form.commentInput.Value()),
+		Cleared:  m.form.cleared,
 		Postings: postings,
 	}
 
@@ -1168,7 +1256,11 @@ func (m *Model) findTransactionIndex(tx core.Transaction) int {
 
 func (m *Model) renderBatchView() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "-- Batch Summary (%d transactions) --\n\n", len(m.batch))
+	fmt.Fprintf(&b, "-- Batch Summary (%d transactions) --\n", len(m.batch))
+	for _, line := range m.loadSummaryLines() {
+		fmt.Fprintf(&b, "%s\n", line)
+	}
+	b.WriteString("\n")
 	if len(m.batch) == 0 {
 		b.WriteString("No transactions in current batch.\n\n")
 	} else {
@@ -1198,16 +1290,50 @@ func (m *Model) renderBatchView() string {
 	return b.String()
 }
 
+func (m *Model) loadSummaryLines() []string {
+	line := fmt.Sprintf(
+		"Data load: %d transactions • %d payees • %d templates",
+		m.loadSummary.Transactions,
+		m.loadSummary.UniquePayees,
+		m.loadSummary.UniqueTemplates,
+	)
+	lines := []string{line}
+	if m.loadSummary.HasIssues() {
+		first := m.loadSummary.Issues[0]
+		stage := strings.ToUpper(first.Stage)
+		if stage == "" {
+			stage = "GENERAL"
+		}
+		if len(m.loadSummary.Issues) == 1 {
+			lines = append(lines, fmt.Sprintf("Load issue: [%s] %s", stage, first.Message))
+		} else {
+			lines = append(lines, fmt.Sprintf("Load issues: %d (first: [%s] %s)", len(m.loadSummary.Issues), stage, first.Message))
+		}
+		return lines
+	}
+	return append(lines, "Load issues: none")
+}
+
 func (m *Model) renderTransactionView() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "-- Transaction Entry -- Remaining: $%s --\n\n", m.form.remaining.StringFixed(2))
 
-	fmt.Fprintf(&b, "Date    %s\n", m.form.date.display(m.form.focusedField == focusDate))
+	dateDisplay := m.form.date.display(m.form.focusedField == focusDate)
+	clearedCursor := " "
+	if m.form.focusedField == focusCleared {
+		clearedCursor = ">"
+	}
+	clearedMark := " "
+	if m.form.cleared {
+		clearedMark = "x"
+	}
+	fmt.Fprintf(&b, "Date    %s  %sCleared [%s]\n", dateDisplay, clearedCursor, clearedMark)
 	fmt.Fprintf(&b, "Payee   %s", m.form.payeeInput.View())
 	if m.form.focusedField == focusPayee {
 		b.WriteString(renderSuggestionList(m.form.payeeInput))
 	}
 	b.WriteString("\n")
+	fmt.Fprintf(&b, "Comment %s\n\n", m.form.commentInput.View())
 	buttonCursor := " "
 	if m.form.focusedField == focusTemplateButton {
 		buttonCursor = ">"
@@ -1220,7 +1346,7 @@ func (m *Model) renderTransactionView() string {
 		if m.lineHasFocus(sectionDebit, i) {
 			cursor = ">"
 		}
-		fmt.Fprintf(&b, "%s [%s] [%s]", cursor, line.accountInput.View(), line.amountInput.View())
+		fmt.Fprintf(&b, "%s [%s] [%s] [%s]", cursor, line.accountInput.View(), line.amountInput.View(), line.commentInput.View())
 		if m.lineHasFocus(sectionDebit, i) && m.form.focusedField == focusSectionAccount {
 			b.WriteString(renderSuggestionList(line.accountInput))
 		}
@@ -1234,7 +1360,7 @@ func (m *Model) renderTransactionView() string {
 		if m.lineHasFocus(sectionCredit, i) {
 			cursor = ">"
 		}
-		fmt.Fprintf(&b, "%s [%s] [%s]", cursor, line.accountInput.View(), line.amountInput.View())
+		fmt.Fprintf(&b, "%s [%s] [%s] [%s]", cursor, line.accountInput.View(), line.amountInput.View(), line.commentInput.View())
 		if m.lineHasFocus(sectionCredit, i) && m.form.focusedField == focusSectionAccount {
 			b.WriteString(renderSuggestionList(line.accountInput))
 		}
@@ -1252,6 +1378,9 @@ func (m *Model) renderTransactionView() string {
 	}
 	if m.canBalanceCurrentLine() {
 		commands = append(commands, "[b]alance")
+	}
+	if m.form.focusedField == focusCleared {
+		commands = append(commands, "[space]toggle cleared")
 	}
 	commands = append(commands, "[ctrl+c]confirm", "[esc]cancel", "[ctrl+q]quit")
 	b.WriteString(strings.Join(commands, "\n"))
@@ -1379,6 +1508,12 @@ func (m *Model) refreshSuggestions() {
 	case focusSectionAmount:
 		if line := m.currentLine(); line != nil {
 			line.amountInput.SetSuggestions(nil)
+		}
+	case focusComment:
+		m.form.commentInput.SetSuggestions(nil)
+	case focusSectionComment:
+		if line := m.currentLine(); line != nil {
+			line.commentInput.SetSuggestions(nil)
 		}
 	}
 }
@@ -1522,6 +1657,8 @@ func (m *Model) textInputFocused() bool {
 	switch m.form.focusedField {
 	case focusPayee:
 		return m.form.payeeInput.Focused()
+	case focusComment:
+		return m.form.commentInput.Focused()
 	case focusSectionAccount:
 		if line := m.currentLine(); line != nil {
 			return line.accountInput.Focused()
@@ -1529,6 +1666,10 @@ func (m *Model) textInputFocused() bool {
 	case focusSectionAmount:
 		if line := m.currentLine(); line != nil {
 			return line.amountInput.Focused()
+		}
+	case focusSectionComment:
+		if line := m.currentLine(); line != nil {
+			return line.commentInput.Focused()
 		}
 	}
 	return false

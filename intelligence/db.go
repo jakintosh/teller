@@ -1,6 +1,7 @@
 package intelligence
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -21,6 +22,13 @@ type TemplateRecord struct {
 	Frequency      int
 }
 
+// BuildReport captures metrics and issues encountered while constructing the intelligence DB.
+type BuildReport struct {
+	UniquePayees    int
+	UniqueTemplates int
+	Issues          []string
+}
+
 // IntelligenceDB is the in-memory data store for all suggestion features.
 type IntelligenceDB struct {
 	Payees    []string
@@ -29,7 +37,7 @@ type IntelligenceDB struct {
 }
 
 // NewIntelligenceDB creates a new intelligence database from parsed transactions.
-func NewIntelligenceDB(transactions []core.Transaction) (*IntelligenceDB, error) {
+func NewIntelligenceDB(transactions []core.Transaction) (*IntelligenceDB, BuildReport, error) {
 	db := &IntelligenceDB{
 		Accounts:  NewTrie(),
 		Templates: make(map[string][]TemplateRecord),
@@ -39,6 +47,8 @@ func NewIntelligenceDB(transactions []core.Transaction) (*IntelligenceDB, error)
 	payeeSet := make(map[string]bool)
 	// Extract unique accounts
 	accountSet := make(map[string]bool)
+	// Capture non-fatal issues encountered during analysis.
+	var issues []string
 
 	for _, tx := range transactions {
 		if tx.Payee != "" {
@@ -70,6 +80,12 @@ func NewIntelligenceDB(transactions []core.Transaction) (*IntelligenceDB, error)
 
 	for _, tx := range transactions {
 		if tx.Payee == "" || len(tx.Postings) == 0 {
+			if tx.Payee == "" {
+				issues = append(issues, fmt.Sprintf("transaction on %s missing payee", tx.Date.Format("2006-01-02")))
+			}
+			if len(tx.Postings) == 0 {
+				issues = append(issues, fmt.Sprintf("transaction on %s for payee %q has no postings", tx.Date.Format("2006-01-02"), tx.Payee))
+			}
 			continue
 		}
 
@@ -89,6 +105,7 @@ func NewIntelligenceDB(transactions []core.Transaction) (*IntelligenceDB, error)
 		for _, posting := range tx.Postings {
 			account := strings.TrimSpace(posting.Account)
 			if account == "" {
+				issues = append(issues, fmt.Sprintf("payee %q has posting with missing account", tx.Payee))
 				continue
 			}
 
@@ -102,6 +119,7 @@ func NewIntelligenceDB(transactions []core.Transaction) (*IntelligenceDB, error)
 
 			amount, err := decimal.NewFromString(rawAmount)
 			if err != nil {
+				issues = append(issues, fmt.Sprintf("payee %q account %q has invalid amount %q", tx.Payee, account, rawAmount))
 				postings = append(postings, entry)
 				continue
 			}
@@ -120,10 +138,13 @@ func NewIntelligenceDB(transactions []core.Transaction) (*IntelligenceDB, error)
 			remainder := balance.Neg()
 			postings[missing[0]].amount = remainder
 			postings[missing[0]].hasAmount = true
+		} else if len(missing) > 1 {
+			issues = append(issues, fmt.Sprintf("payee %q transaction on %s has %d postings without amounts", tx.Payee, tx.Date.Format("2006-01-02"), len(missing)))
 		}
 
 		for _, entry := range postings {
 			if !entry.hasAmount {
+				issues = append(issues, fmt.Sprintf("payee %q account %q skipped due to missing amount", tx.Payee, entry.account))
 				continue
 			}
 			if entry.amount.Sign() >= 0 {
@@ -134,6 +155,7 @@ func NewIntelligenceDB(transactions []core.Transaction) (*IntelligenceDB, error)
 		}
 
 		if len(debitAccounts) == 0 && len(creditAccounts) == 0 {
+			issues = append(issues, fmt.Sprintf("payee %q transaction on %s produced empty template", tx.Payee, tx.Date.Format("2006-01-02")))
 			continue
 		}
 
@@ -155,6 +177,7 @@ func NewIntelligenceDB(transactions []core.Transaction) (*IntelligenceDB, error)
 	}
 
 	// Convert to TemplateRecord slices and sort by frequency
+	var totalTemplates int
 	for payee, templates := range templateFreq {
 		var records []TemplateRecord
 		for _, bucket := range templates {
@@ -177,9 +200,16 @@ func NewIntelligenceDB(transactions []core.Transaction) (*IntelligenceDB, error)
 		})
 
 		db.Templates[payee] = records
+		totalTemplates += len(records)
 	}
 
-	return db, nil
+	report := BuildReport{
+		UniquePayees:    len(db.Payees),
+		UniqueTemplates: totalTemplates,
+		Issues:          issues,
+	}
+
+	return db, report, nil
 }
 
 // FindPayees returns payees that start with the given prefix.

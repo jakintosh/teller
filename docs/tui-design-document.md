@@ -32,6 +32,7 @@ The application flow follows a double-entry workflow with explicit debit and cre
    * **Transition:** Moves to the Batch Review Screen.:
 2. **State: Batch Review Screen**
    * Displays a list of transactions in the current batch, sorted by date.:
+   * Renders a compact load summary banner that reports parsed transaction metrics (total records, unique payees, unique templates) and highlights whether any parsing or intelligence build issues occurred.:
    * **User Input:**:
      * Press n (new transaction) \-\> Transition to Transaction Entry Screen.
      * Use ↑/↓ arrow keys to select a transaction.
@@ -39,22 +40,25 @@ The application flow follows a double-entry workflow with explicit debit and cre
      * Press w (write) \-\> Transition to Confirm Write.
      * Press q (quit) \-\> Transition to Confirm Quit.
 3. **State: Transaction Entry Screen**
-   * The screen shows a compact header (Date, Payee) followed by two allocation sections: **Debits** and **Credits**.:
+   * The screen shows a compact header (Date, Cleared toggle, Payee, Comment) followed by two allocation sections: **Debits** and **Credits**.:
    * **Flow Step 1: Date Entry**:
      * Defaults to the date of the previously entered transaction.
      * When starting a new transaction, the day segment is highlighted by default so users can quickly bump the day forward/backward.
      * ←/→ keys select date component (year, month, day).
      * ↑/↓ keys increment/decrement the selected component. Typing a number also works.
-   * **Flow Step 2: Payee Entry**:
+     * A `Cleared` checkbox sits on the same row and defaults to enabled; pressing <space> toggles the state.
+   * **Flow Step 2: Payee & Comment Entry**:
      * User enters Payee (with autocomplete).
+     * A transaction-level comment field appears directly beneath the payee for optional context that is emitted alongside the payee when exporting.
 * After the payee is set the app searches for templates tied to that payee and surfaces the result in a focusable control labelled `“X templates available”`, where `X` is the template count.
 * The user may press `tab` to move onto this control and press `enter` at any time to open the template picker; focus may also skip past it directly into the debit section when the user wants to continue without a template.
    * **Flow Step 3: Debit Allocation**:
      * Debit lines capture positive postings (e.g., expenses, asset increases).
-     * Tab/shift+tab move between account and amount inputs; ctrl+n adds a new debit line; ctrl+d deletes the focused line (at least one debit always remains).
+     * Each line presents account, amount, and an optional inline comment field (rendered to the right of the amount); comments persist next to the posting amount in the exported ledger entry.
+     * Tab/shift+tab move between account, amount, and comment inputs; ctrl+n adds a new debit line; ctrl+d deletes the focused line (at least one debit always remains).
      * Amount inputs accept inline calculator expressions.
    * **Flow Step 4: Credit Allocation**:
-     * Credit lines capture balancing legs (negative postings).
+     * Credit lines capture balancing legs (negative postings) and expose the same account/amount/comment triad.
      * The UI continually displays **Remaining = Debits – Credits**.
      * With focus on a credit amount, pressing `b` fills the line with the outstanding balance.
      * ctrl+n/ctrl+d behave the same as in the debit section.
