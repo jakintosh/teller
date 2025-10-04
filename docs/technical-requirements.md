@@ -15,9 +15,14 @@ This document outlines the technical requirements for the Ledger Helper TUI appl
 2.1.1. The application MUST implement a parser capable of reading a ledger file on startup.
 2.1.2. The parser's primary function is to extract transaction details: date, payee/description, and a list of posting accounts with their associated amounts.
 2.1.3. The parser MUST recognize transaction-level cleared markers (a `*` between the date and payee) and inline comments introduced with `;` on both the transaction header and individual postings.
-2.1.4. The parsing process SHOULD run as a background task to avoid blocking the UI on startup.
-2.1.5. The parser MUST record non-fatal issues (e.g., malformed lines, missing data) with line numbers so they can be surfaced to the user after startup.
-2.1.6. The parser MAY continue to ignore other non-essential ledger directives (e.g., automated price entries, metadata tags) to preserve performance for the MVP.
+2.1.4. The parser MUST use imperative, function-based parsing rather than regex-based parsing for improved readability and maintainability.
+2.1.5. Amount Format Recognition:
+2.1.5.1. The parser MUST recognize monetary amounts in the following valid formats: `123.45`, `-123.45`, `+123.45`, `$123.45`, `-$123.45`, `$-123.45`, `$ 123.45`, `-$ 123.45`, `$ -123.45` (dollar sign with optional whitespace before digits/sign).
+2.1.5.2. The parser MUST reject amounts with whitespace between a sign and digits (e.g., `$- 123.45`) or whitespace within digits (e.g., `$12 3.45`).
+2.1.5.3. Account names and amounts MUST be separated by either two or more consecutive spaces or one or more tabs, allowing account names to contain single spaces.
+2.1.6. The parsing process SHOULD run as a background task to avoid blocking the UI on startup.
+2.1.7. The parser MUST record non-fatal issues (e.g., malformed lines, missing data) with line numbers so they can be surfaced to the user after startup.
+2.1.8. The parser MAY continue to ignore other non-essential ledger directives (e.g., automated price entries, metadata tags) to preserve performance for the MVP.
 2.2. In-Memory Data Store ("Intelligence DB"):
 2.2.1. The application MUST build an in-memory model from the parsed ledger data to power its suggestion features.
 2.2.2. Accounts: All unique account names MUST be stored in a Trie data structure to facilitate efficient, segment-by-segment hierarchical searching (e.g., Expenses:Food:Groceries).

@@ -146,3 +146,152 @@ func TestParsePostingAmountWithCurrencyBeforeSign(t *testing.T) {
 		t.Errorf("expected third posting amount to be -91.41, got %q", tx.Postings[2].Amount)
 	}
 }
+
+func TestParseAmountWithWhitespace(t *testing.T) {
+	tests := []struct {
+		name           string
+		ledgerContent  string
+		expectedAmount string
+	}{
+		{
+			name: "dollar sign with space before digits",
+			ledgerContent: "2025/01/01 * Test\n" +
+				"    Expenses:Test  $ 123.45\n" +
+				"    Assets:Cash\n",
+			expectedAmount: "123.45",
+		},
+		{
+			name: "dollar sign without space",
+			ledgerContent: "2025/01/01 * Test\n" +
+				"    Expenses:Test  $123.45\n" +
+				"    Assets:Cash\n",
+			expectedAmount: "123.45",
+		},
+		{
+			name: "negative sign before dollar sign with space",
+			ledgerContent: "2025/01/01 * Test\n" +
+				"    Expenses:Test  -$ 123.45\n" +
+				"    Assets:Cash\n",
+			expectedAmount: "-123.45",
+		},
+		{
+			name: "dollar sign before negative sign no space",
+			ledgerContent: "2025/01/01 * Test\n" +
+				"    Expenses:Test  $-123.45\n" +
+				"    Assets:Cash\n",
+			expectedAmount: "-123.45",
+		},
+		{
+			name: "dollar sign with space before negative sign and digits",
+			ledgerContent: "2025/01/01 * Test\n" +
+				"    Expenses:Test  $ -123.45\n" +
+				"    Assets:Cash\n",
+			expectedAmount: "-123.45",
+		},
+		{
+			name: "plain negative amount no dollar sign",
+			ledgerContent: "2025/01/01 * Test\n" +
+				"    Expenses:Test  -123.45\n" +
+				"    Assets:Cash\n",
+			expectedAmount: "-123.45",
+		},
+		{
+			name: "plain positive amount no dollar sign",
+			ledgerContent: "2025/01/01 * Test\n" +
+				"    Expenses:Test  123.45\n" +
+				"    Assets:Cash\n",
+			expectedAmount: "123.45",
+		},
+		{
+			name: "plus sign with dollar",
+			ledgerContent: "2025/01/01 * Test\n" +
+				"    Expenses:Test  +$123.45\n" +
+				"    Assets:Cash\n",
+			expectedAmount: "+123.45",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "test.ledger")
+			if err := os.WriteFile(path, []byte(tt.ledgerContent), 0o600); err != nil {
+				t.Fatalf("failed to write temp ledger: %v", err)
+			}
+
+			result, err := ParseFile(path)
+			if err != nil {
+				t.Fatalf("ParseFile returned error: %v", err)
+			}
+
+			if len(result.Issues) != 0 {
+				t.Fatalf("expected no parse issues, got %d: %+v", len(result.Issues), result.Issues)
+			}
+
+			if len(result.Transactions) != 1 {
+				t.Fatalf("expected 1 transaction, got %d", len(result.Transactions))
+			}
+
+			tx := result.Transactions[0]
+			if len(tx.Postings) < 1 {
+				t.Fatalf("expected at least 1 posting, got %d", len(tx.Postings))
+			}
+
+			if tx.Postings[0].Amount != tt.expectedAmount {
+				t.Errorf("expected amount %q, got %q", tt.expectedAmount, tx.Postings[0].Amount)
+			}
+		})
+	}
+}
+
+func TestParseInvalidAmountsWithWhitespace(t *testing.T) {
+	tests := []struct {
+		name          string
+		ledgerContent string
+		shouldFail    bool
+		description   string
+	}{
+		{
+			name: "space between negative sign and digits after dollar",
+			ledgerContent: "2025/01/01 * Test\n" +
+				"    Expenses:Test  $- 123.45\n" +
+				"    Assets:Cash\n",
+			shouldFail:  true,
+			description: "space between - and digits is invalid",
+		},
+		{
+			name: "space within digits",
+			ledgerContent: "2025/01/01 * Test\n" +
+				"    Expenses:Test  $12 3.45\n" +
+				"    Assets:Cash\n",
+			shouldFail:  true,
+			description: "space within digits is invalid",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "test.ledger")
+			if err := os.WriteFile(path, []byte(tt.ledgerContent), 0o600); err != nil {
+				t.Fatalf("failed to write temp ledger: %v", err)
+			}
+
+			result, err := ParseFile(path)
+			if err != nil {
+				t.Fatalf("ParseFile returned error: %v", err)
+			}
+
+			// For invalid amounts, the parser should either reject the amount
+			// or treat the entire line as an account name
+			tx := result.Transactions[0]
+			if len(tx.Postings) > 0 {
+				// If parsed as account with amount, the amount should be empty
+				// or it should be reported as an issue
+				if tx.Postings[0].Amount != "" && len(result.Issues) == 0 {
+					t.Errorf("expected invalid amount to be rejected or treated as account, but got amount: %q", tx.Postings[0].Amount)
+				}
+			}
+		})
+	}
+}
