@@ -152,9 +152,12 @@ func (m *Model) confirmTransaction() bool {
 	}
 
 	// Build postings list
+	// Note: creditLines are shown as "Credits" but come first in focus order (after recent UI swap)
+	// and contain what users think of as debit accounts (positive amounts)
+	// debitLines are shown as "Debits" but come second and contain credit accounts (negative amounts)
 	postings := make([]core.Posting, 0, len(m.form.debitLines)+len(m.form.creditLines))
-	for i := range m.form.debitLines {
-		line := &m.form.debitLines[i]
+	for i := range m.form.creditLines {
+		line := &m.form.creditLines[i]
 		account := strings.TrimSpace(line.accountInput.Value())
 		amount := lineAmount(line)
 		if account == "" || amount.IsZero() {
@@ -166,8 +169,8 @@ func (m *Model) confirmTransaction() bool {
 			Comment: strings.TrimSpace(line.commentInput.Value()),
 		})
 	}
-	for i := range m.form.creditLines {
-		line := &m.form.creditLines[i]
+	for i := range m.form.debitLines {
+		line := &m.form.debitLines[i]
 		account := strings.TrimSpace(line.accountInput.Value())
 		amount := lineAmount(line)
 		if account == "" || amount.IsZero() {

@@ -125,7 +125,9 @@ func (m *Model) handleEnterKey() bool {
 		m.form.cleared = !m.form.cleared
 		return true
 	case focusPayee:
-		m.advanceFocus()
+		if !m.tryAcceptSuggestion() {
+			m.advanceFocus()
+		}
 		return true
 	case focusComment:
 		m.advanceFocus()
