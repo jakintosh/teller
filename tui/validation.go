@@ -24,7 +24,7 @@ func (m *Model) recalculateTotals() {
 	}
 	m.form.debitTotal = debit
 	m.form.creditTotal = credit
-	m.form.remaining = debit.Sub(credit)
+	m.form.remaining = debit.Add(credit)
 }
 
 // evaluateAmountField evaluates the expression in the currently focused amount field
@@ -84,21 +84,17 @@ func (m *Model) canBalanceCurrentLine() bool {
 	return unfilled == 1
 }
 
-// balanceCurrentLine fills the current amount field with the remaining balance
+// balanceCurrentLine fills the current amount field with the value needed to make the total sum = 0
 // Returns true if the line was successfully balanced
 func (m *Model) balanceCurrentLine() bool {
 	if m.form.focusedField != focusSectionAmount {
 		return false
 	}
 	if line := m.currentLine(); line != nil {
-		var difference decimal.Decimal
-		if m.form.focusedSection == sectionCredit {
-			// For credit lines: debitTotal - (creditTotal - currentLineAmount)
-			difference = m.form.debitTotal.Sub(m.form.creditTotal.Sub(lineAmount(line)))
-		} else {
-			// For debit lines: creditTotal - (debitTotal - currentLineAmount)
-			difference = m.form.creditTotal.Sub(m.form.debitTotal.Sub(lineAmount(line)))
-		}
+		// Calculate what value makes the sum of all amounts equal to zero
+		// New sum = (current remaining) - (current line amount) + X = 0
+		// Therefore: X = -(remaining - current line amount)
+		difference := m.form.remaining.Sub(lineAmount(line)).Neg()
 		if difference.IsZero() {
 			return false
 		}
@@ -145,16 +141,14 @@ func (m *Model) confirmTransaction() bool {
 	}
 
 	// Validate balance
-	difference := m.form.debitTotal.Sub(m.form.creditTotal).Abs()
+	difference := m.form.debitTotal.Add(m.form.creditTotal).Abs()
 	if difference.GreaterThan(decimal.NewFromFloat(balanceTolerance)) {
-		m.setStatus("Debits and credits must balance", statusDuration)
+		m.setStatus("Transaction must balance (sum of all amounts = 0)", statusDuration)
 		return false
 	}
 
 	// Build postings list
-	// Note: creditLines are shown as "Credits" but come first in focus order (after recent UI swap)
-	// and contain what users think of as debit accounts (positive amounts)
-	// debitLines are shown as "Debits" but come second and contain credit accounts (negative amounts)
+	// Credits and Debits are purely organizational - amounts stored as-entered with no sign manipulation
 	postings := make([]core.Posting, 0, len(m.form.debitLines)+len(m.form.creditLines))
 	for i := range m.form.creditLines {
 		line := &m.form.creditLines[i]
@@ -178,7 +172,7 @@ func (m *Model) confirmTransaction() bool {
 		}
 		postings = append(postings, core.Posting{
 			Account: account,
-			Amount:  amount.Neg().StringFixed(2),
+			Amount:  amount.StringFixed(2),
 			Comment: strings.TrimSpace(line.commentInput.Value()),
 		})
 	}

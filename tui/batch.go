@@ -75,7 +75,7 @@ func (m *Model) startEditingTransaction(index int) {
 		line := newPostingLine()
 		line.accountInput.SetValue(posting.Account)
 		line.accountInput.CursorEnd()
-		line.amountInput.SetValue(amount.Abs().StringFixed(2))
+		line.amountInput.SetValue(amount.StringFixed(2))
 		line.amountInput.CursorEnd()
 		line.commentInput.SetValue(posting.Comment)
 		line.commentInput.CursorEnd()

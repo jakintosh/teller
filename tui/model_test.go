@@ -326,8 +326,8 @@ func TestBalanceShortcutFillsCreditDifference(t *testing.T) {
 	model.updateTransactionView(keyRunes('b'))
 
 	got := strings.TrimSpace(model.form.creditLines[0].amountInput.Value())
-	if got != "120.00" {
-		t.Fatalf("expected credit amount to balance to 120.00, got %s", got)
+	if got != "-120.00" {
+		t.Fatalf("expected credit amount to balance to -120.00 (to make sum = 0), got %s", got)
 	}
 }
 
