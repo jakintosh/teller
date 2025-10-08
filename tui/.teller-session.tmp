@@ -1,0 +1,20 @@
+[
+  {
+    "Date": "2025-10-08T00:00:00-04:00",
+    "Payee": "Acme Supplies",
+    "Comment": "Monthly restock",
+    "Cleared": false,
+    "Postings": [
+      {
+        "Account": "Expenses:Office:Supplies",
+        "Amount": "123.45",
+        "Comment": "Office restock"
+      },
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-123.45",
+        "Comment": "Paid via checking"
+      }
+    ]
+  }
+]
