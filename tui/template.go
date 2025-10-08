@@ -9,11 +9,11 @@ import (
 func (m *Model) openTemplateSelection() {
 	m.refreshTemplateOptions()
 	if m.templatePayee == "" {
-		m.setStatus("Enter a payee to view templates", statusShortDuration)
+		m.setStatus("Enter a payee to view templates", statusInfo, statusShortDuration)
 		return
 	}
 	if len(m.templateOptions) == 0 {
-		m.setStatus("No templates available for this payee", statusShortDuration)
+		m.setStatus("No templates available for this payee", statusInfo, statusShortDuration)
 		return
 	}
 	if m.templateCursor >= len(m.templateOptions) {

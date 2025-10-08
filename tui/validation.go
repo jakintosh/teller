@@ -46,7 +46,7 @@ func (m *Model) evaluateInput(input *textinput.Model) bool {
 	}
 	evaluated, err := util.EvaluateExpression(value)
 	if err != nil {
-		m.setStatus(fmt.Sprintf("Invalid expression: %v", err), statusDuration)
+		m.setStatus(fmt.Sprintf("Invalid expression: %v", err), statusError, statusDuration)
 		return false
 	}
 	input.SetValue(evaluated)
@@ -110,12 +110,12 @@ func (m *Model) balanceCurrentLine() bool {
 func (m *Model) confirmTransaction() bool {
 	date := m.form.date.time()
 	if date.IsZero() {
-		m.setStatus("Invalid date", statusShortDuration)
+		m.setStatus("Invalid date", statusError, statusShortDuration)
 		m.form.focusedField = focusDate
 		return false
 	}
 	if strings.TrimSpace(m.form.payeeInput.Value()) == "" {
-		m.setStatus("Payee is required", statusShortDuration)
+		m.setStatus("Payee is required", statusError, statusShortDuration)
 		m.form.focusedField = focusPayee
 		m.form.payeeInput.Focus()
 		return false
@@ -132,18 +132,18 @@ func (m *Model) confirmTransaction() bool {
 
 	// Validate structure
 	if len(m.form.debitLines) == 0 || len(m.form.creditLines) == 0 {
-		m.setStatus("At least one debit and credit leg required", statusShortDuration)
+		m.setStatus("At least one debit and credit leg required", statusError, statusShortDuration)
 		return false
 	}
 	if m.form.debitTotal.IsZero() || m.form.creditTotal.IsZero() {
-		m.setStatus("Amounts required in both sections", statusShortDuration)
+		m.setStatus("Amounts required in both sections", statusError, statusShortDuration)
 		return false
 	}
 
 	// Validate balance
 	difference := m.form.debitTotal.Add(m.form.creditTotal).Abs()
 	if difference.GreaterThan(decimal.NewFromFloat(balanceTolerance)) {
-		m.setStatus("Transaction must balance (sum of all amounts = 0)", statusDuration)
+		m.setStatus("Transaction must balance (sum of all amounts = 0)", statusError, statusDuration)
 		return false
 	}
 
@@ -178,7 +178,7 @@ func (m *Model) confirmTransaction() bool {
 	}
 
 	if len(postings) < 2 {
-		m.setStatus("Incomplete transaction", statusShortDuration)
+		m.setStatus("Incomplete transaction", statusError, statusShortDuration)
 		return false
 	}
 
@@ -212,13 +212,13 @@ func (m *Model) confirmTransaction() bool {
 
 	// Save session
 	if err := session.SaveBatch(m.batch); err != nil {
-		m.setStatus(fmt.Sprintf("Saved but session write failed: %v", err), statusDuration)
+		m.setStatus(fmt.Sprintf("Saved but session write failed: %v", err), statusError, statusDuration)
 	} else {
 		action := "added"
 		if wasEdit {
 			action = "updated"
 		}
-		m.setStatus(fmt.Sprintf("Transaction %s (%d total)", action, len(m.batch)), statusShortDuration)
+		m.setStatus(fmt.Sprintf("Transaction %s (%d total)", action, len(m.batch)), statusSuccess, statusShortDuration)
 	}
 
 	m.lastDate = date

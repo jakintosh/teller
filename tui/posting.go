@@ -95,7 +95,7 @@ func (m *Model) deleteLine(section sectionType) {
 		lines = &m.form.creditLines
 	}
 	if lines == nil || len(*lines) <= 1 {
-		m.setStatus("At least one line required", statusShortDuration)
+		m.setStatus("At least one line required", statusError, statusShortDuration)
 		return
 	}
 	idx := m.form.focusedIndex

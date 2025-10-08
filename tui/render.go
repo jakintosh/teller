@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/shopspring/decimal"
 )
 
 // renderBatchView displays the batch summary screen
@@ -21,7 +22,7 @@ func (m *Model) renderBatchView() string {
 		for i, tx := range m.batch {
 			cursor := " "
 			if i == m.cursor {
-				cursor = ">"
+				cursor = formatCursor(">")
 			}
 			payee := tx.Payee
 			if len(payee) > 28 {
@@ -60,24 +61,26 @@ func (m *Model) loadSummaryLines() []string {
 			stage = "GENERAL"
 		}
 		if len(m.loadSummary.Issues) == 1 {
-			lines = append(lines, fmt.Sprintf("Load issue: [%s] %s", stage, first.Message))
+			lines = append(lines, formatIssues(fmt.Sprintf("Load issue: [%s] %s", stage, first.Message)))
 		} else {
-			lines = append(lines, fmt.Sprintf("Load issues: %d (first: [%s] %s)", len(m.loadSummary.Issues), stage, first.Message))
+			lines = append(lines, formatIssues(fmt.Sprintf("Load issues: %d (first: [%s] %s)", len(m.loadSummary.Issues), stage, first.Message)))
 		}
 		return lines
 	}
-	return append(lines, "Load issues: none")
+	return append(lines, formatNoIssues("Load issues: none"))
 }
 
 // renderTransactionView displays the transaction entry form
 func (m *Model) renderTransactionView() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "-- Transaction Entry -- Remaining: $%s --\n\n", m.form.remaining.StringFixed(2))
+	isBalanced := m.form.remaining.Abs().LessThan(decimal.NewFromFloat(balanceTolerance))
+	remainingStr := formatBalanced(m.form.remaining.StringFixed(2), isBalanced)
+	fmt.Fprintf(&b, "-- Transaction Entry -- Remaining: %s --\n\n", remainingStr)
 
 	dateDisplay := m.form.date.display(m.form.focusedField == focusDate)
 	clearedCursor := " "
 	if m.form.focusedField == focusCleared {
-		clearedCursor = ">"
+		clearedCursor = formatCursor(">")
 	}
 	clearedMark := " "
 	if m.form.cleared {
@@ -92,15 +95,15 @@ func (m *Model) renderTransactionView() string {
 	fmt.Fprintf(&b, "Comment %s\n\n", m.form.commentInput.View())
 	buttonCursor := " "
 	if m.form.focusedField == focusTemplateButton {
-		buttonCursor = ">"
+		buttonCursor = formatCursor(">")
 	}
 	fmt.Fprintf(&b, "        %s[%s]\n\n", buttonCursor, templateAvailabilityLabel(len(m.templateOptions)))
 
-	fmt.Fprintf(&b, "Credits  (total %s)\n", m.form.creditTotal.StringFixed(2))
+	fmt.Fprintf(&b, "Credits  (total %s)\n", formatCreditTotal(m.form.creditTotal.StringFixed(2)))
 	for i, line := range m.form.creditLines {
 		cursor := " "
 		if m.lineHasFocus(sectionCredit, i) {
-			cursor = ">"
+			cursor = formatCursor(">")
 		}
 		fmt.Fprintf(&b, "%s [%s] [%s] [%s]", cursor, line.accountInput.View(), line.amountInput.View(), line.commentInput.View())
 		if m.lineHasFocus(sectionCredit, i) && m.form.focusedField == focusSectionAccount {
@@ -110,11 +113,11 @@ func (m *Model) renderTransactionView() string {
 	}
 	b.WriteString("\n")
 
-	fmt.Fprintf(&b, "Debits   (total %s)\n", m.form.debitTotal.StringFixed(2))
+	fmt.Fprintf(&b, "Debits   (total %s)\n", formatDebitTotal(m.form.debitTotal.StringFixed(2)))
 	for i, line := range m.form.debitLines {
 		cursor := " "
 		if m.lineHasFocus(sectionDebit, i) {
-			cursor = ">"
+			cursor = formatCursor(">")
 		}
 		fmt.Fprintf(&b, "%s [%s] [%s] [%s]", cursor, line.accountInput.View(), line.amountInput.View(), line.commentInput.View())
 		if m.lineHasFocus(sectionDebit, i) && m.form.focusedField == focusSectionAccount {
@@ -174,13 +177,14 @@ func (m *Model) renderTemplateView() string {
 		tpl := m.templateOptions[i]
 		cursor := " "
 		if i == m.templateCursor {
-			cursor = ">"
+			cursor = formatCursor(">")
 		}
 		usageLabel := "times"
 		if tpl.Frequency == 1 {
 			usageLabel = "time"
 		}
-		fmt.Fprintf(&b, "%s %d. Used %d %s\n", cursor, i+1, tpl.Frequency, usageLabel)
+		frequencyText := fmt.Sprintf("Used %d %s", tpl.Frequency, usageLabel)
+		fmt.Fprintf(&b, "%s %d. %s\n", cursor, i+1, formatFrequency(frequencyText))
 		b.WriteString("    Debit Accounts:\n")
 		if len(tpl.DebitAccounts) == 0 {
 			b.WriteString("      (none)\n")
@@ -237,7 +241,7 @@ func renderSuggestionList(input textinput.Model) string {
 	for i := 0; i < display; i++ {
 		cursor := " "
 		if i == input.CurrentSuggestionIndex() {
-			cursor = ">"
+			cursor = formatCursor(">")
 		}
 		fmt.Fprintf(&b, "      %s %s\n", cursor, matches[i])
 	}

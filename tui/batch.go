@@ -129,9 +129,10 @@ func (m *Model) writeTransactionsToLedger() error {
 	return nil
 }
 
-// setStatus sets a temporary status message with the given duration
-func (m *Model) setStatus(message string, duration time.Duration) {
+// setStatus sets a temporary status message with the given duration and kind
+func (m *Model) setStatus(message string, kind statusKind, duration time.Duration) {
 	m.statusMessage = message
+	m.statusKind = kind
 	m.statusExpiry = time.Now().Add(duration)
 }
 
@@ -143,7 +144,7 @@ func (m *Model) statusLine() string {
 	if !m.statusExpiry.IsZero() && time.Now().After(m.statusExpiry) {
 		return ""
 	}
-	return m.statusMessage
+	return formatStatus(m.statusMessage, m.statusKind)
 }
 
 // refreshAfterLoad updates the UI after loading data

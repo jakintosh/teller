@@ -44,7 +44,7 @@ func (m *Model) updateBatchView(msg tea.KeyMsg) tea.Cmd {
 		}
 	case "w":
 		if len(m.batch) == 0 {
-			m.setStatus("No transactions to write", statusShortDuration)
+			m.setStatus("No transactions to write", statusInfo, statusShortDuration)
 		} else {
 			m.openConfirm(confirmWrite)
 		}
@@ -194,20 +194,20 @@ func (m *Model) updateConfirmView(msg tea.KeyMsg) tea.Cmd {
 		switch m.pendingConfirm {
 		case confirmWrite:
 			if err := m.writeTransactionsToLedger(); err != nil {
-				m.setStatus(fmt.Sprintf("Failed to write: %v", err), statusDuration)
+				m.setStatus(fmt.Sprintf("Failed to write: %v", err), statusError, statusDuration)
 			} else {
 				count := len(m.batch)
-				m.setStatus(fmt.Sprintf("Wrote %d transaction(s) to %s", count, m.ledgerFilePath), statusShortDuration)
+				m.setStatus(fmt.Sprintf("Wrote %d transaction(s) to %s", count, m.ledgerFilePath), statusSuccess, statusShortDuration)
 				m.batch = nil
 				m.cursor = 0
 				if err := session.DeleteSession(); err != nil {
-					m.setStatus(fmt.Sprintf("Ledger written but session cleanup failed: %v", err), statusDuration)
+					m.setStatus(fmt.Sprintf("Ledger written but session cleanup failed: %v", err), statusError, statusDuration)
 				}
 			}
 			m.currentView = viewBatch
 		case confirmQuit:
 			if err := session.DeleteSession(); err != nil {
-				m.setStatus(fmt.Sprintf("Failed to clear session: %v", err), statusDuration)
+				m.setStatus(fmt.Sprintf("Failed to clear session: %v", err), statusError, statusDuration)
 			}
 			return tea.Quit
 		}

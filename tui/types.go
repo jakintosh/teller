@@ -36,6 +36,15 @@ const (
 	confirmQuit
 )
 
+// statusKind represents the type of status message being displayed
+type statusKind int
+
+const (
+	statusInfo statusKind = iota
+	statusSuccess
+	statusError
+)
+
 // focusedField represents which field currently has user focus
 type focusedField int
 
@@ -95,6 +104,7 @@ type Model struct {
 
 	lastDate      time.Time
 	statusMessage string
+	statusKind    statusKind
 	statusExpiry  time.Time
 	err           error
 }
