@@ -67,6 +67,14 @@ const (
 	dateSegmentDay
 )
 
+// focusPosition uniquely identifies a focusable element in the form
+// This allows us to build a spatial focus path that matches the visual layout
+type focusPosition struct {
+	field   focusedField
+	section sectionType
+	index   int
+}
+
 // Model is the main application state container for the TUI
 type Model struct {
 	db             *intelligence.IntelligenceDB

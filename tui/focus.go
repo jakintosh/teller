@@ -4,99 +4,135 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 )
 
-// advanceFocus moves focus to the next field in the transaction form
-func (m *Model) advanceFocus() {
-	switch m.form.focusedField {
-	case focusDate:
-		m.form.focusedField = focusCleared
-	case focusCleared:
-		m.form.focusedField = focusPayee
-		m.form.payeeInput.Focus()
-	case focusPayee:
-		m.form.payeeInput.Blur()
-		m.form.focusedField = focusComment
-		m.form.commentInput.Focus()
-	case focusComment:
-		m.focusTemplateButton()
-		m.refreshTemplateOptions()
-	case focusTemplateButton:
-		m.focusSection(sectionCredit, 0, focusSectionAccount)
-	case focusSectionAccount:
-		if line := m.currentLine(); line != nil {
-			line.accountInput.Blur()
-			line.amountInput.Focus()
-			m.form.focusedField = focusSectionAmount
-		}
-	case focusSectionAmount:
-		if line := m.currentLine(); line != nil {
-			line.amountInput.Blur()
-			line.commentInput.Focus()
-			m.form.focusedField = focusSectionComment
-		}
-	case focusSectionComment:
-		if line := m.currentLine(); line != nil {
-			line.commentInput.Blur()
-		}
-		if m.form.focusedSection == sectionCredit {
-			if m.form.focusedIndex < len(m.form.creditLines)-1 {
-				m.focusSection(sectionCredit, m.form.focusedIndex+1, focusSectionAccount)
-			} else {
-				m.focusSection(sectionDebit, 0, focusSectionAccount)
-			}
-		} else {
-			if m.form.focusedIndex < len(m.form.debitLines)-1 {
-				m.focusSection(sectionDebit, m.form.focusedIndex+1, focusSectionAccount)
-			} else {
-				m.addLine(sectionDebit, false)
-				m.focusSection(sectionDebit, len(m.form.debitLines)-1, focusSectionAccount)
+// buildFocusPath creates an ordered list of all focusable elements based on visual layout
+// Order: Date → Cleared → Payee → Comment → Template → Credits → Debits
+func (m *Model) buildFocusPath() []focusPosition {
+	path := []focusPosition{
+		{field: focusDate},
+		{field: focusCleared},
+		{field: focusPayee},
+		{field: focusComment},
+		{field: focusTemplateButton},
+	}
+
+	// Add all credit lines (account → amount → comment for each)
+	for i := range m.form.creditLines {
+		path = append(path,
+			focusPosition{field: focusSectionAccount, section: sectionCredit, index: i},
+			focusPosition{field: focusSectionAmount, section: sectionCredit, index: i},
+			focusPosition{field: focusSectionComment, section: sectionCredit, index: i},
+		)
+	}
+
+	// Add all debit lines (account → amount → comment for each)
+	for i := range m.form.debitLines {
+		path = append(path,
+			focusPosition{field: focusSectionAccount, section: sectionDebit, index: i},
+			focusPosition{field: focusSectionAmount, section: sectionDebit, index: i},
+			focusPosition{field: focusSectionComment, section: sectionDebit, index: i},
+		)
+	}
+
+	return path
+}
+
+// currentPosition returns the current focus position
+func (m *Model) currentPosition() focusPosition {
+	return focusPosition{
+		field:   m.form.focusedField,
+		section: m.form.focusedSection,
+		index:   m.form.focusedIndex,
+	}
+}
+
+// findPositionInPath returns the index of the given position in the path, or -1 if not found
+func findPositionInPath(path []focusPosition, pos focusPosition) int {
+	for i, p := range path {
+		// For header fields, only compare the field itself
+		if p.field == pos.field {
+			switch p.field {
+			case focusDate, focusCleared, focusPayee, focusComment, focusTemplateButton:
+				return i
+			case focusSectionAccount, focusSectionAmount, focusSectionComment:
+				// For posting line fields, also compare section and index
+				if p.section == pos.section && p.index == pos.index {
+					return i
+				}
 			}
 		}
 	}
+	return -1
+}
+
+// moveFocusToPosition moves focus to the specified position, handling all blur/focus transitions
+func (m *Model) moveFocusToPosition(pos focusPosition) {
+	m.blurCurrent()
+	m.form.focusedField = pos.field
+	m.form.focusedSection = pos.section
+	m.form.focusedIndex = pos.index
+
+	// Focus the appropriate input field
+	switch pos.field {
+	case focusPayee:
+		m.form.payeeInput.Focus()
+	case focusComment:
+		m.form.commentInput.Focus()
+	case focusSectionAccount, focusSectionAmount, focusSectionComment:
+		if line := m.currentLine(); line != nil {
+			switch pos.field {
+			case focusSectionAccount:
+				line.accountInput.Focus()
+			case focusSectionAmount:
+				line.amountInput.Focus()
+			case focusSectionComment:
+				line.commentInput.Focus()
+			}
+		}
+	}
+}
+
+// advanceFocus moves focus to the next field in the transaction form
+func (m *Model) advanceFocus() {
+	// Build the current focus path
+	path := m.buildFocusPath()
+	current := m.currentPosition()
+	currentIdx := findPositionInPath(path, current)
+
+	// Special case: refresh templates when leaving comment field
+	if current.field == focusComment {
+		m.refreshTemplateOptions()
+	}
+
+	// Special case: at end of last debit line, add a new line
+	if current.field == focusSectionComment &&
+		current.section == sectionDebit &&
+		current.index == len(m.form.debitLines)-1 {
+		m.addLine(sectionDebit, false)
+		// Rebuild path after adding line
+		path = m.buildFocusPath()
+		currentIdx = findPositionInPath(path, current)
+	}
+
+	// Move to next position in path
+	if currentIdx >= 0 && currentIdx < len(path)-1 {
+		m.moveFocusToPosition(path[currentIdx+1])
+	}
+
 	m.refreshSuggestions()
 }
 
 // retreatFocus moves focus to the previous field in the transaction form
 func (m *Model) retreatFocus() {
-	switch m.form.focusedField {
-	case focusCleared:
-		m.form.focusedField = focusDate
-	case focusPayee:
-		m.form.payeeInput.Blur()
-		m.form.focusedField = focusDate
-	case focusComment:
-		m.form.commentInput.Blur()
-		m.form.focusedField = focusPayee
-		m.form.payeeInput.Focus()
-	case focusTemplateButton:
-		m.form.focusedField = focusComment
-		m.form.commentInput.Focus()
-	case focusSectionAccount:
-		if m.form.focusedSection == sectionCredit {
-			if m.form.focusedIndex == 0 {
-				m.form.focusedField = focusComment
-				m.form.commentInput.Focus()
-			} else {
-				m.focusSection(sectionCredit, m.form.focusedIndex-1, focusSectionAmount)
-			}
-		} else {
-			if m.form.focusedIndex == 0 {
-				if len(m.form.creditLines) > 0 {
-					m.focusSection(sectionCredit, len(m.form.creditLines)-1, focusSectionAmount)
-				} else {
-					m.form.focusedField = focusComment
-					m.form.commentInput.Focus()
-				}
-			} else {
-				m.focusSection(sectionDebit, m.form.focusedIndex-1, focusSectionAmount)
-			}
-		}
-	case focusSectionAmount:
-		m.focusSection(m.form.focusedSection, m.form.focusedIndex, focusSectionAccount)
-	case focusSectionComment:
-		m.focusSection(m.form.focusedSection, m.form.focusedIndex, focusSectionAmount)
-	default:
-		m.form.focusedField = focusDate
+	// Build the current focus path
+	path := m.buildFocusPath()
+	current := m.currentPosition()
+	currentIdx := findPositionInPath(path, current)
+
+	// Move to previous position in path
+	if currentIdx > 0 {
+		m.moveFocusToPosition(path[currentIdx-1])
 	}
+
 	m.refreshSuggestions()
 }
 

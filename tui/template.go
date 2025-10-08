@@ -73,14 +73,14 @@ func (m *Model) applyTemplate(record intelligence.TemplateRecord) {
 	}
 
 	m.currentView = viewTransaction
-	m.focusSection(sectionDebit, 0, focusSectionAccount)
+	m.focusSection(sectionCredit, 0, focusSectionAccount)
 	m.recalculateTotals()
 }
 
 // skipTemplate returns to the transaction view without applying a template
 func (m *Model) skipTemplate() {
 	m.currentView = viewTransaction
-	m.focusSection(sectionDebit, 0, focusSectionAccount)
+	m.focusSection(sectionCredit, 0, focusSectionAccount)
 	m.recalculateTotals()
 }
 
