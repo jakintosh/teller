@@ -92,7 +92,7 @@ func (m *Model) startEditingTransaction(index int) {
 		m.form.creditLines = []postingLine{newPostingLine()}
 	}
 	m.recalculateTotals()
-	m.focusSection(sectionDebit, 0, focusSectionAccount)
+	m.focusSection(sectionCredit, 0, focusSectionAccount)
 	m.currentView = viewTransaction
 }
 

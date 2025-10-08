@@ -55,9 +55,9 @@ func (m *Model) evaluateInput(input *textinput.Model) bool {
 }
 
 // canBalanceCurrentLine returns true if the current line can be auto-balanced
-// This is only allowed when on a credit amount field with exactly one empty amount in the entire form
+// This is only allowed when on an amount field with exactly one empty amount in the entire form
 func (m *Model) canBalanceCurrentLine() bool {
-	if m.form.focusedField != focusSectionAmount || m.form.focusedSection != sectionCredit {
+	if m.form.focusedField != focusSectionAmount {
 		return false
 	}
 	line := m.currentLine()
@@ -84,14 +84,21 @@ func (m *Model) canBalanceCurrentLine() bool {
 	return unfilled == 1
 }
 
-// balanceCurrentLine fills the current credit amount field with the remaining balance
+// balanceCurrentLine fills the current amount field with the remaining balance
 // Returns true if the line was successfully balanced
 func (m *Model) balanceCurrentLine() bool {
-	if m.form.focusedField != focusSectionAmount || m.form.focusedSection != sectionCredit {
+	if m.form.focusedField != focusSectionAmount {
 		return false
 	}
 	if line := m.currentLine(); line != nil {
-		difference := m.form.debitTotal.Sub(m.form.creditTotal.Sub(lineAmount(line)))
+		var difference decimal.Decimal
+		if m.form.focusedSection == sectionCredit {
+			// For credit lines: debitTotal - (creditTotal - currentLineAmount)
+			difference = m.form.debitTotal.Sub(m.form.creditTotal.Sub(lineAmount(line)))
+		} else {
+			// For debit lines: creditTotal - (debitTotal - currentLineAmount)
+			difference = m.form.creditTotal.Sub(m.form.debitTotal.Sub(lineAmount(line)))
+		}
 		if difference.IsZero() {
 			return false
 		}

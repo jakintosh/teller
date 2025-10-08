@@ -96,20 +96,6 @@ func (m *Model) renderTransactionView() string {
 	}
 	fmt.Fprintf(&b, "        %s[%s]\n\n", buttonCursor, templateAvailabilityLabel(len(m.templateOptions)))
 
-	fmt.Fprintf(&b, "Debits   (total %s)\n", m.form.debitTotal.StringFixed(2))
-	for i, line := range m.form.debitLines {
-		cursor := " "
-		if m.lineHasFocus(sectionDebit, i) {
-			cursor = ">"
-		}
-		fmt.Fprintf(&b, "%s [%s] [%s] [%s]", cursor, line.accountInput.View(), line.amountInput.View(), line.commentInput.View())
-		if m.lineHasFocus(sectionDebit, i) && m.form.focusedField == focusSectionAccount {
-			b.WriteString(renderSuggestionList(line.accountInput))
-		}
-		b.WriteString("\n")
-	}
-	b.WriteString("\n")
-
 	fmt.Fprintf(&b, "Credits  (total %s)\n", m.form.creditTotal.StringFixed(2))
 	for i, line := range m.form.creditLines {
 		cursor := " "
@@ -118,6 +104,20 @@ func (m *Model) renderTransactionView() string {
 		}
 		fmt.Fprintf(&b, "%s [%s] [%s] [%s]", cursor, line.accountInput.View(), line.amountInput.View(), line.commentInput.View())
 		if m.lineHasFocus(sectionCredit, i) && m.form.focusedField == focusSectionAccount {
+			b.WriteString(renderSuggestionList(line.accountInput))
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
+
+	fmt.Fprintf(&b, "Debits   (total %s)\n", m.form.debitTotal.StringFixed(2))
+	for i, line := range m.form.debitLines {
+		cursor := " "
+		if m.lineHasFocus(sectionDebit, i) {
+			cursor = ">"
+		}
+		fmt.Fprintf(&b, "%s [%s] [%s] [%s]", cursor, line.accountInput.View(), line.amountInput.View(), line.commentInput.View())
+		if m.lineHasFocus(sectionDebit, i) && m.form.focusedField == focusSectionAccount {
 			b.WriteString(renderSuggestionList(line.accountInput))
 		}
 		b.WriteString("\n")

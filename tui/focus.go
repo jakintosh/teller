@@ -20,7 +20,7 @@ func (m *Model) advanceFocus() {
 		m.focusTemplateButton()
 		m.refreshTemplateOptions()
 	case focusTemplateButton:
-		m.focusSection(sectionDebit, 0, focusSectionAccount)
+		m.focusSection(sectionCredit, 0, focusSectionAccount)
 	case focusSectionAccount:
 		if line := m.currentLine(); line != nil {
 			line.accountInput.Blur()
@@ -37,18 +37,18 @@ func (m *Model) advanceFocus() {
 		if line := m.currentLine(); line != nil {
 			line.commentInput.Blur()
 		}
-		if m.form.focusedSection == sectionDebit {
-			if m.form.focusedIndex < len(m.form.debitLines)-1 {
-				m.focusSection(sectionDebit, m.form.focusedIndex+1, focusSectionAccount)
-			} else {
-				m.focusSection(sectionCredit, 0, focusSectionAccount)
-			}
-		} else {
+		if m.form.focusedSection == sectionCredit {
 			if m.form.focusedIndex < len(m.form.creditLines)-1 {
 				m.focusSection(sectionCredit, m.form.focusedIndex+1, focusSectionAccount)
 			} else {
-				m.addLine(sectionCredit, false)
-				m.focusSection(sectionCredit, len(m.form.creditLines)-1, focusSectionAccount)
+				m.focusSection(sectionDebit, 0, focusSectionAccount)
+			}
+		} else {
+			if m.form.focusedIndex < len(m.form.debitLines)-1 {
+				m.focusSection(sectionDebit, m.form.focusedIndex+1, focusSectionAccount)
+			} else {
+				m.addLine(sectionDebit, false)
+				m.focusSection(sectionDebit, len(m.form.debitLines)-1, focusSectionAccount)
 			}
 		}
 	}
@@ -71,23 +71,23 @@ func (m *Model) retreatFocus() {
 		m.form.focusedField = focusComment
 		m.form.commentInput.Focus()
 	case focusSectionAccount:
-		if m.form.focusedSection == sectionDebit {
+		if m.form.focusedSection == sectionCredit {
 			if m.form.focusedIndex == 0 {
 				m.form.focusedField = focusComment
 				m.form.commentInput.Focus()
 			} else {
-				m.focusSection(sectionDebit, m.form.focusedIndex-1, focusSectionAmount)
+				m.focusSection(sectionCredit, m.form.focusedIndex-1, focusSectionAmount)
 			}
 		} else {
 			if m.form.focusedIndex == 0 {
-				if len(m.form.debitLines) > 0 {
-					m.focusSection(sectionDebit, len(m.form.debitLines)-1, focusSectionAmount)
+				if len(m.form.creditLines) > 0 {
+					m.focusSection(sectionCredit, len(m.form.creditLines)-1, focusSectionAmount)
 				} else {
 					m.form.focusedField = focusComment
 					m.form.commentInput.Focus()
 				}
 			} else {
-				m.focusSection(sectionCredit, m.form.focusedIndex-1, focusSectionAmount)
+				m.focusSection(sectionDebit, m.form.focusedIndex-1, focusSectionAmount)
 			}
 		}
 	case focusSectionAmount:
