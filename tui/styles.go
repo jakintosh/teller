@@ -22,6 +22,8 @@ var (
 	noIssuesColor   = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))            // Green
 	issuesColor     = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))             // Red
 	frequencyColor  = lipgloss.NewStyle().Foreground(lipgloss.Color("14"))            // Cyan
+	dimmedColor     = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))             // Dark grey for disabled commands
+	activeColor     = lipgloss.NewStyle().Foreground(lipgloss.Color("15"))            // White for active commands
 )
 
 // formatBalanced returns a colored string for the remaining balance
@@ -74,4 +76,12 @@ func formatIssues(message string) string {
 // formatFrequency returns a colored frequency count
 func formatFrequency(text string) string {
 	return frequencyColor.Render(text)
+}
+
+// formatCommand returns a command hint, dimmed if disabled, white if enabled
+func formatCommand(text string, enabled bool) string {
+	if enabled {
+		return activeColor.Render(text)
+	}
+	return dimmedColor.Render(text)
 }

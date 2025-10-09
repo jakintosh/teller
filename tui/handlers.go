@@ -62,15 +62,14 @@ func (m *Model) updateTransactionView(msg tea.KeyMsg) tea.Cmd {
 			return nil
 		}
 	}
-	if (msg.Type == tea.KeySpace || (msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == ' ')) && m.form.focusedField == focusCleared {
-		m.form.cleared = !m.form.cleared
-		return nil
-	}
 
 	switch msg.String() {
 	case "ctrl+q":
 		return tea.Quit
 	case "ctrl+c":
+		m.form.cleared = !m.form.cleared
+		return nil
+	case "ctrl+s":
 		m.confirmTransaction()
 		return nil
 	case "esc":
@@ -90,7 +89,7 @@ func (m *Model) updateTransactionView(msg tea.KeyMsg) tea.Cmd {
 		if m.handleEnterKey() {
 			return nil
 		}
-	case "ctrl+n":
+	case "ctrl+a":
 		if m.hasActiveLine() {
 			m.addLine(m.form.focusedSection, true)
 		}
@@ -101,7 +100,7 @@ func (m *Model) updateTransactionView(msg tea.KeyMsg) tea.Cmd {
 		}
 		return nil
 	case "b":
-		if m.canBalanceCurrentLine() && m.balanceCurrentLine() {
+		if m.balanceAnyLine() {
 			m.recalculateTotals()
 		}
 		return nil
@@ -120,9 +119,6 @@ func (m *Model) handleEnterKey() bool {
 	switch m.form.focusedField {
 	case focusDate:
 		m.advanceFocus()
-		return true
-	case focusCleared:
-		m.form.cleared = !m.form.cleared
 		return true
 	case focusPayee:
 		if !m.tryAcceptSuggestion() {

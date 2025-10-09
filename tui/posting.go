@@ -135,7 +135,7 @@ func newTransactionForm(baseDate time.Time) transactionForm {
 		debitLines:     debit,
 		creditLines:    credit,
 		focusedField:   focusDate,
-		focusedSection: sectionCredit,
+		focusedSection: sectionDebit,
 		focusedIndex:   0,
 		remaining:      decimal.Zero,
 		debitTotal:     decimal.Zero,

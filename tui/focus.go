@@ -5,23 +5,13 @@ import (
 )
 
 // buildFocusPath creates an ordered list of all focusable elements based on visual layout
-// Order: Date → Cleared → Payee → Comment → Template → Credits → Debits
+// Order: Date → Payee → Comment → Template → Debits → Credits
 func (m *Model) buildFocusPath() []focusPosition {
 	path := []focusPosition{
 		{field: focusDate},
-		{field: focusCleared},
 		{field: focusPayee},
 		{field: focusComment},
 		{field: focusTemplateButton},
-	}
-
-	// Add all credit lines (account → amount → comment for each)
-	for i := range m.form.creditLines {
-		path = append(path,
-			focusPosition{field: focusSectionAccount, section: sectionCredit, index: i},
-			focusPosition{field: focusSectionAmount, section: sectionCredit, index: i},
-			focusPosition{field: focusSectionComment, section: sectionCredit, index: i},
-		)
 	}
 
 	// Add all debit lines (account → amount → comment for each)
@@ -30,6 +20,15 @@ func (m *Model) buildFocusPath() []focusPosition {
 			focusPosition{field: focusSectionAccount, section: sectionDebit, index: i},
 			focusPosition{field: focusSectionAmount, section: sectionDebit, index: i},
 			focusPosition{field: focusSectionComment, section: sectionDebit, index: i},
+		)
+	}
+
+	// Add all credit lines (account → amount → comment for each)
+	for i := range m.form.creditLines {
+		path = append(path,
+			focusPosition{field: focusSectionAccount, section: sectionCredit, index: i},
+			focusPosition{field: focusSectionAmount, section: sectionCredit, index: i},
+			focusPosition{field: focusSectionComment, section: sectionCredit, index: i},
 		)
 	}
 
@@ -51,7 +50,7 @@ func findPositionInPath(path []focusPosition, pos focusPosition) int {
 		// For header fields, only compare the field itself
 		if p.field == pos.field {
 			switch p.field {
-			case focusDate, focusCleared, focusPayee, focusComment, focusTemplateButton:
+			case focusDate, focusPayee, focusComment, focusTemplateButton:
 				return i
 			case focusSectionAccount, focusSectionAmount, focusSectionComment:
 				// For posting line fields, also compare section and index
@@ -103,11 +102,11 @@ func (m *Model) advanceFocus() {
 		m.refreshTemplateOptions()
 	}
 
-	// Special case: at end of last debit line, add a new line
+	// Special case: at end of last credit line, add a new line
 	if current.field == focusSectionComment &&
-		current.section == sectionDebit &&
-		current.index == len(m.form.debitLines)-1 {
-		m.addLine(sectionDebit, false)
+		current.section == sectionCredit &&
+		current.index == len(m.form.creditLines)-1 {
+		m.addLine(sectionCredit, false)
 		// Rebuild path after adding line
 		path = m.buildFocusPath()
 		currentIdx = findPositionInPath(path, current)
@@ -173,6 +172,20 @@ func (m *Model) focusSection(section sectionType, index int, field focusedField)
 func (m *Model) focusTemplateButton() {
 	m.blurCurrent()
 	m.form.focusedField = focusTemplateButton
+}
+
+// focusFirstPostingLine moves focus to the first posting line in the focus path
+// This is the field that comes after the template button
+func (m *Model) focusFirstPostingLine() {
+	path := m.buildFocusPath()
+	// Find the template button position
+	templatePos := focusPosition{field: focusTemplateButton}
+	templateIdx := findPositionInPath(path, templatePos)
+
+	// Move to the next position after the template button
+	if templateIdx >= 0 && templateIdx < len(path)-1 {
+		m.moveFocusToPosition(path[templateIdx+1])
+	}
 }
 
 // blurCurrent removes focus from the currently focused input field

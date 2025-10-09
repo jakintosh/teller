@@ -54,19 +54,9 @@ func (m *Model) evaluateInput(input *textinput.Model) bool {
 	return true
 }
 
-// canBalanceCurrentLine returns true if the current line can be auto-balanced
-// This is only allowed when on an amount field with exactly one empty amount in the entire form
-func (m *Model) canBalanceCurrentLine() bool {
-	if m.form.focusedField != focusSectionAmount {
-		return false
-	}
-	line := m.currentLine()
-	if line == nil {
-		return false
-	}
-	if strings.TrimSpace(line.amountInput.Value()) != "" {
-		return false
-	}
+// canBalanceAnyLine returns true if there is exactly one unfilled amount in the entire form
+// This check works regardless of which field is currently focused
+func (m *Model) canBalanceAnyLine() bool {
 	if len(m.form.debitLines)+len(m.form.creditLines) < 2 {
 		return false
 	}
@@ -82,6 +72,22 @@ func (m *Model) canBalanceCurrentLine() bool {
 		}
 	}
 	return unfilled == 1
+}
+
+// canBalanceCurrentLine returns true if the current line can be auto-balanced
+// This is only allowed when on an amount field with exactly one empty amount in the entire form
+func (m *Model) canBalanceCurrentLine() bool {
+	if m.form.focusedField != focusSectionAmount {
+		return false
+	}
+	line := m.currentLine()
+	if line == nil {
+		return false
+	}
+	if strings.TrimSpace(line.amountInput.Value()) != "" {
+		return false
+	}
+	return m.canBalanceAnyLine()
 }
 
 // balanceCurrentLine fills the current amount field with the value needed to make the total sum = 0
@@ -101,6 +107,44 @@ func (m *Model) balanceCurrentLine() bool {
 		line.amountInput.SetValue(difference.StringFixed(2))
 		line.amountInput.CursorEnd()
 		return true
+	}
+	return false
+}
+
+// balanceAnyLine finds the single unfilled amount field and fills it to balance the transaction
+// Works regardless of which field is currently focused
+// Returns true if a line was successfully balanced
+func (m *Model) balanceAnyLine() bool {
+	if !m.canBalanceAnyLine() {
+		return false
+	}
+
+	// Find the unfilled line
+	for i := range m.form.debitLines {
+		line := &m.form.debitLines[i]
+		if strings.TrimSpace(line.amountInput.Value()) == "" {
+			// Calculate the balancing amount
+			difference := m.form.remaining.Sub(lineAmount(line)).Neg()
+			if difference.IsZero() {
+				return false
+			}
+			line.amountInput.SetValue(difference.StringFixed(2))
+			line.amountInput.CursorEnd()
+			return true
+		}
+	}
+	for i := range m.form.creditLines {
+		line := &m.form.creditLines[i]
+		if strings.TrimSpace(line.amountInput.Value()) == "" {
+			// Calculate the balancing amount
+			difference := m.form.remaining.Sub(lineAmount(line)).Neg()
+			if difference.IsZero() {
+				return false
+			}
+			line.amountInput.SetValue(difference.StringFixed(2))
+			line.amountInput.CursorEnd()
+			return true
+		}
 	}
 	return false
 }
@@ -148,10 +192,10 @@ func (m *Model) confirmTransaction() bool {
 	}
 
 	// Build postings list
-	// Credits and Debits are purely organizational - amounts stored as-entered with no sign manipulation
+	// Debits and Credits are purely organizational - amounts stored as-entered with no sign manipulation
 	postings := make([]core.Posting, 0, len(m.form.debitLines)+len(m.form.creditLines))
-	for i := range m.form.creditLines {
-		line := &m.form.creditLines[i]
+	for i := range m.form.debitLines {
+		line := &m.form.debitLines[i]
 		account := strings.TrimSpace(line.accountInput.Value())
 		amount := lineAmount(line)
 		if account == "" || amount.IsZero() {
@@ -163,8 +207,8 @@ func (m *Model) confirmTransaction() bool {
 			Comment: strings.TrimSpace(line.commentInput.Value()),
 		})
 	}
-	for i := range m.form.debitLines {
-		line := &m.form.debitLines[i]
+	for i := range m.form.creditLines {
+		line := &m.form.creditLines[i]
 		account := strings.TrimSpace(line.accountInput.Value())
 		amount := lineAmount(line)
 		if account == "" || amount.IsZero() {

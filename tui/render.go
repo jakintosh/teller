@@ -78,15 +78,11 @@ func (m *Model) renderTransactionView() string {
 	fmt.Fprintf(&b, "-- Transaction Entry -- Remaining: %s --\n\n", remainingStr)
 
 	dateDisplay := m.form.date.display(m.form.focusedField == focusDate)
-	clearedCursor := " "
-	if m.form.focusedField == focusCleared {
-		clearedCursor = formatCursor(">")
-	}
 	clearedMark := " "
 	if m.form.cleared {
 		clearedMark = "x"
 	}
-	fmt.Fprintf(&b, "Date    %s  %sCleared [%s]\n", dateDisplay, clearedCursor, clearedMark)
+	fmt.Fprintf(&b, "Date    %s  Cleared [%s]\n", dateDisplay, clearedMark)
 	fmt.Fprintf(&b, "Payee   %s", m.form.payeeInput.View())
 	if m.form.focusedField == focusPayee {
 		b.WriteString(renderSuggestionList(m.form.payeeInput))
@@ -98,20 +94,6 @@ func (m *Model) renderTransactionView() string {
 		buttonCursor = formatCursor(">")
 	}
 	fmt.Fprintf(&b, "        %s[%s]\n\n", buttonCursor, templateAvailabilityLabel(len(m.templateOptions)))
-
-	fmt.Fprintf(&b, "Credits  (total %s)\n", formatCreditTotal(m.form.creditTotal.StringFixed(2)))
-	for i, line := range m.form.creditLines {
-		cursor := " "
-		if m.lineHasFocus(sectionCredit, i) {
-			cursor = formatCursor(">")
-		}
-		fmt.Fprintf(&b, "%s [%s] [%s] [%s]", cursor, line.accountInput.View(), line.amountInput.View(), line.commentInput.View())
-		if m.lineHasFocus(sectionCredit, i) && m.form.focusedField == focusSectionAccount {
-			b.WriteString(renderSuggestionList(line.accountInput))
-		}
-		b.WriteString("\n")
-	}
-	b.WriteString("\n")
 
 	fmt.Fprintf(&b, "Debits   (total %s)\n", formatDebitTotal(m.form.debitTotal.StringFixed(2)))
 	for i, line := range m.form.debitLines {
@@ -127,21 +109,35 @@ func (m *Model) renderTransactionView() string {
 	}
 	b.WriteString("\n")
 
+	fmt.Fprintf(&b, "Credits  (total %s)\n", formatCreditTotal(m.form.creditTotal.StringFixed(2)))
+	for i, line := range m.form.creditLines {
+		cursor := " "
+		if m.lineHasFocus(sectionCredit, i) {
+			cursor = formatCursor(">")
+		}
+		fmt.Fprintf(&b, "%s [%s] [%s] [%s]", cursor, line.accountInput.View(), line.amountInput.View(), line.commentInput.View())
+		if m.lineHasFocus(sectionCredit, i) && m.form.focusedField == focusSectionAccount {
+			b.WriteString(renderSuggestionList(line.accountInput))
+		}
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
+
 	if msg := m.statusLine(); msg != "" {
 		fmt.Fprintf(&b, "%s\n\n", msg)
 	}
 
-	commands := []string{"[tab]next", "[shift+tab]prev"}
-	if m.hasActiveLine() {
-		commands = append(commands, "[ctrl+n]add line", "[ctrl+d]delete line")
+	commands := []string{
+		"[tab]next",
+		"[shift+tab]prev",
+		formatCommand("[ctrl+a]add line", m.hasActiveLine()),
+		formatCommand("[ctrl+d]delete line", m.hasActiveLine()),
+		formatCommand("[b]alance", m.canBalanceAnyLine()),
+		"[ctrl+c]toggle cleared",
+		"[ctrl+s]confirm",
+		"[esc]cancel",
+		"[ctrl+q]quit",
 	}
-	if m.canBalanceCurrentLine() {
-		commands = append(commands, "[b]alance")
-	}
-	if m.form.focusedField == focusCleared {
-		commands = append(commands, "[space]toggle cleared")
-	}
-	commands = append(commands, "[ctrl+c]confirm", "[esc]cancel", "[ctrl+q]quit")
 	b.WriteString(strings.Join(commands, "\n"))
 	return b.String()
 }

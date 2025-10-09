@@ -129,8 +129,7 @@ func TestTransactionFlowAddsBatchEntry(t *testing.T) {
 	tm := teatest.NewTestModel(t, model, teatest.WithInitialTermSize(80, 24))
 
 	tm.Send(keyRunes('n')) // start new transaction
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // date -> cleared
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // cleared -> payee
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // date -> payee
 	for _, r := range "Grocery Store" {
 		tm.Send(keyRunes(r))
 	}
@@ -151,7 +150,7 @@ func TestTransactionFlowAddsBatchEntry(t *testing.T) {
 	}
 	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // credit account -> amount field
 	tm.Send(keyRunes('b'))                // balance shortcut fills value
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlC}) // confirm transaction
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlS}) // confirm transaction
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlQ}) // quit program
 
 	finalModel := tm.FinalModel(t)
@@ -200,10 +199,9 @@ func TestTransactionCapturesCommentsAndCleared(t *testing.T) {
 	model := NewModel(db, ledgerPath, core.LoadSummary{})
 	tm := teatest.NewTestModel(t, model, teatest.WithInitialTermSize(80, 24))
 
-	tm.Send(keyRunes('n'))                           // start new transaction
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // date -> cleared
-	tm.Send(tea.KeyMsg{Type: tea.KeySpace})          // toggle cleared off
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // cleared -> payee
+	tm.Send(keyRunes('n'))                // start new transaction
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlC}) // toggle cleared off
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})   // date -> payee
 	for _, r := range "Acme Supplies" {
 		tm.Send(keyRunes(r))
 	}
@@ -234,7 +232,7 @@ func TestTransactionCapturesCommentsAndCleared(t *testing.T) {
 	for _, r := range "Paid via checking" {
 		tm.Send(keyRunes(r))
 	}
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlC}) // confirm transaction
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlS}) // confirm transaction
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlQ}) // quit program
 
 	finalModel := tm.FinalModel(t)
