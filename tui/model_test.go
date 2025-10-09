@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"git.sr.ht/~jakintosh/teller/core"
 	"git.sr.ht/~jakintosh/teller/intelligence"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/exp/teatest"
 )
 
 func keyRunes(r rune) tea.KeyMsg {
@@ -44,10 +44,6 @@ func testDB(t *testing.T) *intelligence.IntelligenceDB {
 		t.Fatalf("unexpected build issues: %v", report.Issues)
 	}
 	return db
-}
-
-func wait() {
-	time.Sleep(10 * time.Millisecond)
 }
 
 func TestBatchViewDisplaysLoadSummary(t *testing.T) {
@@ -130,53 +126,36 @@ func TestTransactionFlowAddsBatchEntry(t *testing.T) {
 	}
 
 	model := NewModel(db, ledgerPath, core.LoadSummary{})
-	program := tea.NewProgram(model, tea.WithoutRenderer())
+	tm := teatest.NewTestModel(t, model, teatest.WithInitialTermSize(80, 24))
 
-	done := make(chan struct{})
-	var runErr error
-	go func() {
-		_, runErr = program.Run()
-		close(done)
-	}()
-
-	wait()
-	send := func(msg tea.KeyMsg) {
-		program.Send(msg)
-		wait()
-	}
-
-	send(keyRunes('n')) // start new transaction
-	send(tea.KeyMsg{Type: tea.KeyTab}) // date -> cleared
-	send(tea.KeyMsg{Type: tea.KeyTab}) // cleared -> payee
+	tm.Send(keyRunes('n')) // start new transaction
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // date -> cleared
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // cleared -> payee
 	for _, r := range "Grocery Store" {
-		send(keyRunes(r))
+		tm.Send(keyRunes(r))
 	}
-	send(tea.KeyMsg{Type: tea.KeyTab}) // payee -> comment
-	send(tea.KeyMsg{Type: tea.KeyTab}) // comment -> template button
-	send(tea.KeyMsg{Type: tea.KeyTab}) // template button -> debit account
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // payee -> comment
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // comment -> template button
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // template button -> debit account
 	for _, r := range "Expenses:Food:Groceries" {
-		send(keyRunes(r))
+		tm.Send(keyRunes(r))
 	}
-	send(tea.KeyMsg{Type: tea.KeyTab}) // debit account -> amount
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // debit account -> amount
 	for _, r := range "100" {
-		send(keyRunes(r))
+		tm.Send(keyRunes(r))
 	}
-	send(tea.KeyMsg{Type: tea.KeyTab}) // debit amount -> comment
-	send(tea.KeyMsg{Type: tea.KeyTab}) // debit comment -> credit account
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // debit amount -> comment
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // debit comment -> credit account
 	for _, r := range "Assets:Checking" {
-		send(keyRunes(r))
+		tm.Send(keyRunes(r))
 	}
-	send(tea.KeyMsg{Type: tea.KeyTab}) // credit account -> amount field
-	send(keyRunes('b'))                // balance shortcut fills value
-	send(tea.KeyMsg{Type: tea.KeyCtrlC})
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // credit account -> amount field
+	tm.Send(keyRunes('b'))                // balance shortcut fills value
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlC}) // confirm transaction
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlQ}) // quit program
 
-	wait()
-	program.Quit()
-	<-done
-
-	if runErr != nil {
-		t.Fatalf("program run error: %v", runErr)
-	}
+	finalModel := tm.FinalModel(t)
+	model = finalModel.(*Model)
 
 	if len(model.batch) != 1 {
 		t.Fatalf("expected 1 transaction in batch, got %d (status=%q)", len(model.batch), model.statusMessage)
@@ -219,64 +198,47 @@ func TestTransactionCapturesCommentsAndCleared(t *testing.T) {
 	}
 
 	model := NewModel(db, ledgerPath, core.LoadSummary{})
-	program := tea.NewProgram(model, tea.WithoutRenderer())
+	tm := teatest.NewTestModel(t, model, teatest.WithInitialTermSize(80, 24))
 
-	done := make(chan struct{})
-	var runErr error
-	go func() {
-		_, runErr = program.Run()
-		close(done)
-	}()
-
-	wait()
-	send := func(msg tea.KeyMsg) {
-		program.Send(msg)
-		wait()
-	}
-
-	send(keyRunes('n'))                           // start new transaction
-	send(tea.KeyMsg{Type: tea.KeyTab})            // date -> cleared
-	send(tea.KeyMsg{Type: tea.KeySpace})          // toggle cleared off
-	send(tea.KeyMsg{Type: tea.KeyTab})            // cleared -> payee
+	tm.Send(keyRunes('n'))                           // start new transaction
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // date -> cleared
+	tm.Send(tea.KeyMsg{Type: tea.KeySpace})          // toggle cleared off
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // cleared -> payee
 	for _, r := range "Acme Supplies" {
-		send(keyRunes(r))
+		tm.Send(keyRunes(r))
 	}
-	send(tea.KeyMsg{Type: tea.KeyTab})            // payee -> comment
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // payee -> comment
 	for _, r := range "Monthly restock" {
-		send(keyRunes(r))
+		tm.Send(keyRunes(r))
 	}
-	send(tea.KeyMsg{Type: tea.KeyTab})            // comment -> template button
-	send(tea.KeyMsg{Type: tea.KeyTab})            // template -> debit account
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // comment -> template button
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // template -> debit account
 	for _, r := range "Expenses:Office:Supplies" {
-		send(keyRunes(r))
+		tm.Send(keyRunes(r))
 	}
-	send(tea.KeyMsg{Type: tea.KeyTab})            // debit account -> amount
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // debit account -> amount
 	for _, r := range "123.45" {
-		send(keyRunes(r))
+		tm.Send(keyRunes(r))
 	}
-	send(tea.KeyMsg{Type: tea.KeyTab})            // debit amount -> comment
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // debit amount -> comment
 	for _, r := range "Office restock" {
-		send(keyRunes(r))
+		tm.Send(keyRunes(r))
 	}
-	send(tea.KeyMsg{Type: tea.KeyTab})            // debit comment -> credit account
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // debit comment -> credit account
 	for _, r := range "Assets:Checking" {
-		send(keyRunes(r))
+		tm.Send(keyRunes(r))
 	}
-	send(tea.KeyMsg{Type: tea.KeyTab})            // credit account -> amount
-	send(keyRunes('b'))                           // balance amount
-	send(tea.KeyMsg{Type: tea.KeyTab})            // credit amount -> comment
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // credit account -> amount
+	tm.Send(keyRunes('b'))                           // balance amount
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // credit amount -> comment
 	for _, r := range "Paid via checking" {
-		send(keyRunes(r))
+		tm.Send(keyRunes(r))
 	}
-	send(tea.KeyMsg{Type: tea.KeyCtrlC})          // confirm transaction
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlC}) // confirm transaction
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlQ}) // quit program
 
-	wait()
-	program.Quit()
-	<-done
-
-	if runErr != nil {
-		t.Fatalf("program run error: %v", runErr)
-	}
+	finalModel := tm.FinalModel(t)
+	model = finalModel.(*Model)
 
 	if len(model.batch) != 1 {
 		t.Fatalf("expected 1 transaction in batch, got %d", len(model.batch))
