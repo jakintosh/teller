@@ -99,7 +99,7 @@ func (m *Model) updateTransactionView(msg tea.KeyMsg) tea.Cmd {
 			m.deleteLine(m.form.focusedSection)
 		}
 		return nil
-	case "b":
+	case "ctrl+b":
 		if m.balanceAnyLine() {
 			m.recalculateTotals()
 		}
