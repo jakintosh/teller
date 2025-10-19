@@ -243,6 +243,10 @@ func (m *Model) confirmTransaction() bool {
 		m.batch = append(m.batch, tx)
 	}
 
+	// Rebuild runtime intelligence from the updated batch
+	// This ensures new payees, accounts, and templates are immediately available for suggestions
+	m.db.Runtime.BuildFromBatch(m.batch)
+
 	// Sort batch by date and payee
 	sort.SliceStable(m.batch, func(i, j int) bool {
 		if m.batch[i].Date.Equal(m.batch[j].Date) {

@@ -14,6 +14,10 @@ import (
 func (m *Model) SetBatch(batch []core.Transaction) {
 	m.batch = append([]core.Transaction(nil), batch...)
 	sort.Slice(m.batch, func(i, j int) bool { return m.batch[i].Date.Before(m.batch[j].Date) })
+
+	// Rebuild runtime intelligence from the loaded batch
+	m.db.Runtime.BuildFromBatch(m.batch)
+
 	if len(m.batch) == 0 {
 		m.cursor = 0
 		m.batchOffset = 0

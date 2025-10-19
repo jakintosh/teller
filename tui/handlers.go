@@ -199,6 +199,8 @@ func (m *Model) updateConfirmView(msg tea.KeyMsg) tea.Cmd {
 				m.batch = nil
 				m.cursor = 0
 				m.batchOffset = 0
+				// Clear runtime intelligence when batch is cleared
+				m.db.Runtime.BuildFromBatch(nil)
 				if err := session.DeleteSession(); err != nil {
 					m.setStatus(fmt.Sprintf("Ledger written but session cleanup failed: %v", err), statusError, statusDuration)
 				}

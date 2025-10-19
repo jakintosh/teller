@@ -401,3 +401,131 @@ func equalSlices(a, b []string) bool {
 	}
 	return true
 }
+
+func TestMergedTemplateFrequency(t *testing.T) {
+	// Test that templates are merged with combined frequencies
+	// This simulates the user scenario where base DB has a common template
+	// and runtime adds a new usage of the same template pattern
+
+	// Create base database with a common template (100 uses)
+	baseTransactions := []core.Transaction{
+		{
+			Date:  time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			Payee: "Grocery Store",
+			Postings: []core.Posting{
+				{Account: "Expenses:Food", Amount: "50"},
+				{Account: "Assets:Checking", Amount: "-50"},
+			},
+		},
+	}
+	db, _, err := NewIntelligenceDB(baseTransactions)
+	if err != nil {
+		t.Fatalf("Failed to create base database: %v", err)
+	}
+
+	// Simulate the template having frequency 100 (would normally come from ledger)
+	db.Templates["Grocery Store"] = []TemplateRecord{
+		{
+			DebitAccounts:  []string{"Expenses:Food"},
+			CreditAccounts: []string{"Assets:Checking"},
+			Frequency:      100,
+		},
+	}
+
+	// Add a new template via runtime (same structure, frequency 2)
+	runtimeBatch := []core.Transaction{
+		{
+			Date:  time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
+			Payee: "Grocery Store",
+			Postings: []core.Posting{
+				{Account: "Expenses:Food", Amount: "75"},
+				{Account: "Assets:Checking", Amount: "-75"},
+			},
+		},
+		{
+			Date:  time.Date(2025, 1, 16, 0, 0, 0, 0, time.UTC),
+			Payee: "Grocery Store",
+			Postings: []core.Posting{
+				{Account: "Expenses:Food", Amount: "80"},
+				{Account: "Assets:Checking", Amount: "-80"},
+			},
+		},
+	}
+	db.Runtime.BuildFromBatch(runtimeBatch)
+
+	// Get merged templates
+	templates := db.FindTemplates("Grocery Store")
+
+	// Should have one template with combined frequency
+	if len(templates) != 1 {
+		t.Errorf("Expected 1 template, got %d", len(templates))
+		return
+	}
+
+	mergedTemplate := templates[0]
+	expectedCombinedFreq := 102 // 100 from base + 2 from runtime
+	if mergedTemplate.Frequency != expectedCombinedFreq {
+		t.Errorf("Expected combined frequency %d, got %d", expectedCombinedFreq, mergedTemplate.Frequency)
+	}
+}
+
+func TestMergedTemplatesWithNewPattern(t *testing.T) {
+	// Test that new template patterns from runtime appear after common patterns from base
+
+	// Create base database with one common template
+	baseTransactions := []core.Transaction{
+		{
+			Date:  time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+			Payee: "Test Store",
+			Postings: []core.Posting{
+				{Account: "Expenses:A", Amount: "50"},
+				{Account: "Assets:Checking", Amount: "-50"},
+			},
+		},
+	}
+	db, _, err := NewIntelligenceDB(baseTransactions)
+	if err != nil {
+		t.Fatalf("Failed to create base database: %v", err)
+	}
+
+	// Set base template with high frequency
+	db.Templates["Test Store"] = []TemplateRecord{
+		{
+			DebitAccounts:  []string{"Expenses:A"},
+			CreditAccounts: []string{"Assets:Checking"},
+			Frequency:      50,
+		},
+	}
+
+	// Add a new template pattern via runtime (different accounts)
+	runtimeBatch := []core.Transaction{
+		{
+			Date:  time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC),
+			Payee: "Test Store",
+			Postings: []core.Posting{
+				{Account: "Expenses:A", Amount: "75"},
+				{Account: "Assets:CreditCard", Amount: "-75"},
+			},
+		},
+	}
+	db.Runtime.BuildFromBatch(runtimeBatch)
+
+	// Get merged templates
+	templates := db.FindTemplates("Test Store")
+
+	// Should have two templates
+	if len(templates) != 2 {
+		t.Errorf("Expected 2 templates, got %d", len(templates))
+		return
+	}
+
+	// First template should be the common one (frequency 50)
+	if templates[0].Frequency != 50 {
+		t.Errorf("Expected first template frequency 50, got %d", templates[0].Frequency)
+	}
+
+	// Second template should be the new pattern (frequency 1)
+	if templates[1].Frequency != 1 {
+		t.Errorf("Expected second template frequency 1, got %d", templates[1].Frequency)
+	}
+}

@@ -34,6 +34,7 @@ type IntelligenceDB struct {
 	Payees    []string
 	Accounts  *Trie
 	Templates map[string][]TemplateRecord
+	Runtime   *RuntimeIntelligence
 }
 
 // NewIntelligenceDB creates a new intelligence database from parsed transactions.
@@ -41,6 +42,7 @@ func NewIntelligenceDB(transactions []core.Transaction) (*IntelligenceDB, BuildR
 	db := &IntelligenceDB{
 		Accounts:  NewTrie(),
 		Templates: make(map[string][]TemplateRecord),
+		Runtime:   NewRuntimeIntelligence(),
 	}
 
 	// Extract unique payees
@@ -213,28 +215,122 @@ func NewIntelligenceDB(transactions []core.Transaction) (*IntelligenceDB, BuildR
 }
 
 // FindPayees returns payees that start with the given prefix.
+// Results from both base and runtime intelligence are merged and returned
+// in alphabetical order for a unified, consistent experience.
 func (db *IntelligenceDB) FindPayees(prefix string) []string {
 	prefix = strings.ToLower(prefix)
+	seen := make(map[string]bool)
 	var matches []string
 
-	for _, payee := range db.Payees {
-		if strings.HasPrefix(strings.ToLower(payee), prefix) {
-			matches = append(matches, payee)
+	// Collect all matching payees from runtime
+	if db.Runtime != nil {
+		for _, payee := range db.Runtime.FindPayees(prefix) {
+			if !seen[payee] {
+				matches = append(matches, payee)
+				seen[payee] = true
+			}
 		}
 	}
 
+	// Collect all matching payees from base database (avoiding duplicates)
+	for _, payee := range db.Payees {
+		if strings.HasPrefix(strings.ToLower(payee), prefix) {
+			if !seen[payee] {
+				matches = append(matches, payee)
+				seen[payee] = true
+			}
+		}
+	}
+
+	// Sort results alphabetically for consistent ordering
+	sort.Strings(matches)
 	return matches
 }
 
 // FindAccounts returns account names that start with the given prefix.
+// Results from both base and runtime intelligence are merged and returned
+// in alphabetical order for a unified, consistent experience.
 func (db *IntelligenceDB) FindAccounts(prefix string) []string {
-	return db.Accounts.Find(prefix)
+	seen := make(map[string]bool)
+	var matches []string
+
+	// Collect all matching accounts from runtime
+	if db.Runtime != nil {
+		for _, account := range db.Runtime.FindAccounts(prefix) {
+			if !seen[account] {
+				matches = append(matches, account)
+				seen[account] = true
+			}
+		}
+	}
+
+	// Collect all matching accounts from base database (avoiding duplicates)
+	for _, account := range db.Accounts.Find(prefix) {
+		if !seen[account] {
+			matches = append(matches, account)
+			seen[account] = true
+		}
+	}
+
+	// Sort results alphabetically for consistent ordering
+	sort.Strings(matches)
+	return matches
 }
 
 // FindTemplates returns transaction templates for the given payee, ordered by frequency.
+// Templates from both base and runtime intelligence are merged by structure
+// (debit/credit account patterns), with frequencies combined when the same
+// pattern appears in both sources. Results are sorted by total frequency (descending).
 func (db *IntelligenceDB) FindTemplates(payee string) []TemplateRecord {
-	if templates, exists := db.Templates[payee]; exists {
-		return templates
+	// Map template structure (debit accounts|->credit accounts) to combined TemplateRecord
+	templateMap := make(map[string]TemplateRecord)
+
+	// Helper to create a template key from a TemplateRecord
+	templateKey := func(tr TemplateRecord) string {
+		return strings.Join(tr.DebitAccounts, "|") + "->" + strings.Join(tr.CreditAccounts, "|")
 	}
-	return []TemplateRecord{}
+
+	// Collect templates from base database
+	if templates, exists := db.Templates[payee]; exists {
+		for _, tr := range templates {
+			key := templateKey(tr)
+			templateMap[key] = tr
+		}
+	}
+
+	// Merge templates from runtime (combine frequencies for same structure)
+	if db.Runtime != nil {
+		if runtimeTemplates := db.Runtime.FindTemplates(payee); len(runtimeTemplates) > 0 {
+			for _, rt := range runtimeTemplates {
+				key := templateKey(rt)
+				if existing, found := templateMap[key]; found {
+					// Same template structure exists in both - combine frequencies
+					existing.Frequency += rt.Frequency
+					templateMap[key] = existing
+				} else {
+					// New template structure from runtime
+					templateMap[key] = rt
+				}
+			}
+		}
+	}
+
+	// Convert map back to sorted slice
+	var allTemplates []TemplateRecord
+	for _, tr := range templateMap {
+		allTemplates = append(allTemplates, tr)
+	}
+
+	// Sort by frequency (descending), with secondary sort for consistency
+	sort.Slice(allTemplates, func(i, j int) bool {
+		if allTemplates[i].Frequency == allTemplates[j].Frequency {
+			if len(allTemplates[i].DebitAccounts) == len(allTemplates[j].DebitAccounts) {
+				return strings.Join(allTemplates[i].DebitAccounts, "|") < strings.Join(allTemplates[j].DebitAccounts, "|")
+			}
+			return len(allTemplates[i].DebitAccounts) > len(allTemplates[j].DebitAccounts)
+		}
+		return allTemplates[i].Frequency > allTemplates[j].Frequency
+	})
+
+	return allTemplates
 }
