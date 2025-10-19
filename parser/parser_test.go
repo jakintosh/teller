@@ -8,7 +8,7 @@ import (
 )
 
 func TestParseFile(t *testing.T) {
-	result, err := ParseFile("../sample.ledger")
+	result, err := ParseFile("../testdata/fixtures/sample.ledger")
 	if err != nil {
 		t.Fatalf("Failed to parse sample ledger file: %v", err)
 	}

@@ -1,3 +1,8 @@
 CLAUDE.md
-*.ledger
 bin/
+*.ledger
+.teller-session.tmp
+
+# Except for test data
+!testdata/fixtures/*.ledger
+!testdata/sessions/.teller-session.tmp

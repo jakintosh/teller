@@ -1,0 +1,44 @@
+; Sample ledger file for testing
+; This file contains various transaction formats to test the parser
+
+2025-01-15 * Super Grocery Store  ; Weekly groceries run
+    Expenses:Food:Groceries          85.42  ; Pantry staples
+    Assets:Checking                 -85.42
+
+2025-01-16 * Gas Station
+    Expenses:Auto:Gas				$  45.00
+    Assets:Credit Card				$ -45.00  ; Rewards card
+
+2025/01/17 * City Market
+    Expenses:Food:Groceries			$ 125.67
+    Expenses:Food:Alcohol			$  19.99
+    Assets:Checking
+
+; Transaction with comments
+2025-01-18 * Coffee Shop  ; Morning latte and snack
+    Expenses:Food:Dining            $8.50  ; Morning coffee
+    Assets:Checking                -$8.50  ; From checking account
+
+2025-01-19 * Hardware Store
+    Expenses:Home:Tools              67.23
+    Expenses:Home:Supplies           12.45
+    Assets:Credit Card             -79.68
+
+2025-01-20   Online Purchase  ; Awaiting shipment
+    Expenses:Electronics            299.99
+    Assets:Credit Card
+
+; Multi-split restaurant transaction
+2025-01-21 * Fine Dining Restaurant
+    Expenses:Food:Dining            75.00
+    Expenses:Food:Alcohol           25.00
+    Expenses:Taxes:Tips             15.00
+    Assets:Credit Card            -115.00
+
+2025-01-22 * City Market
+    Expenses:Food:Groceries          89.15
+    Assets:Checking                -89.15
+
+2025-01-23 * Gas Station
+    Expenses:Auto:Gas               52.30
+    Assets:Credit Card             -52.30

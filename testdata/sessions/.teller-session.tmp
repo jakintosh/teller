@@ -1,0 +1,1802 @@
+[
+  {
+    "Date": "2025-05-31T13:44:05.42910537-04:00",
+    "Payee": "Shell Gas Station",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-6.14",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Utilities:Electric",
+        "Amount": "6.14",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-05-16T13:44:05.42910537-04:00",
+    "Payee": "Hulu",
+    "Comment": "",
+    "Cleared": false,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-54.34",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Shopping:Electronics",
+        "Amount": "54.34",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-20T13:44:05.42910537-04:00",
+    "Payee": "IKEA",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-40.09",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Utilities:Electric",
+        "Amount": "40.09",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-04T13:44:05.42910537-04:00",
+    "Payee": "Apple Store",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-48.55",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Travel:Flights",
+        "Amount": "48.55",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-14T13:44:05.42910537-04:00",
+    "Payee": "Shell Gas Station",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-42.74",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Health:Pharmacy",
+        "Amount": "42.74",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-09-29T13:44:05.42910537-04:00",
+    "Payee": "Target",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-44.88",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Entertainment:Movies",
+        "Amount": "44.88",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-28T13:44:05.42910537-04:00",
+    "Payee": "United Airlines",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-18.88",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Shopping:Electronics",
+        "Amount": "18.88",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-09-02T13:44:05.42910537-04:00",
+    "Payee": "REI",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-31.36",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Transportation:Ride",
+        "Amount": "31.36",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-30T13:44:05.42910537-04:00",
+    "Payee": "Hilton Hotel",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-16.21",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Shopping:Home",
+        "Amount": "16.21",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-31T13:44:05.42910537-04:00",
+    "Payee": "United Airlines",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-21.86",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Entertainment:Streaming",
+        "Amount": "21.86",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-22T13:44:05.42910537-04:00",
+    "Payee": "Yelp",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-49.94",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Shopping:Electronics",
+        "Amount": "49.94",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-19T13:44:05.42910537-04:00",
+    "Payee": "Trader Joe's",
+    "Comment": "",
+    "Cleared": false,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-26.98",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Travel:Lodging",
+        "Amount": "26.98",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-05-06T13:44:05.42910537-04:00",
+    "Payee": "Local Coffee Shop",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-25.59",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Utilities:Electric",
+        "Amount": "25.59",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-05-07T13:44:05.42910537-04:00",
+    "Payee": "DoorDash",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-17.06",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Transportation:Ride",
+        "Amount": "17.06",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-05-13T13:44:05.42910537-04:00",
+    "Payee": "Eventbrite",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-24.57",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Shopping:Electronics",
+        "Amount": "24.57",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-30T13:44:05.42910537-04:00",
+    "Payee": "REI",
+    "Comment": "",
+    "Cleared": false,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-45.77",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Utilities:Internet",
+        "Amount": "45.77",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-04-20T13:44:05.42910537-04:00",
+    "Payee": "OpenTable",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-32.28",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Health:Pharmacy",
+        "Amount": "32.28",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-01T13:44:05.42910537-04:00",
+    "Payee": "Target",
+    "Comment": "",
+    "Cleared": false,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-14.92",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Food:Coffee",
+        "Amount": "14.92",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-05-24T13:44:05.42910537-04:00",
+    "Payee": "Gap",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-49.48",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Shopping:Home",
+        "Amount": "49.48",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-07T13:44:05.42910537-04:00",
+    "Payee": "Chipotle",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-5.13",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Entertainment:Streaming",
+        "Amount": "5.13",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-17T13:44:05.42910537-04:00",
+    "Payee": "Nike Store",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-30.10",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Health:Pharmacy",
+        "Amount": "30.10",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-08T13:44:05.42910537-04:00",
+    "Payee": "Whole Foods Market",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-11.35",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Food:Groceries",
+        "Amount": "11.35",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-14T13:44:05.42910537-04:00",
+    "Payee": "OpenTable",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-10.58",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Utilities:Electric",
+        "Amount": "10.58",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-09-18T13:44:05.42910537-04:00",
+    "Payee": "Shell Gas Station",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-37.79",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Shopping:Home",
+        "Amount": "37.79",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-13T13:44:05.42910537-04:00",
+    "Payee": "Best Buy",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-19.25",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Food:Coffee",
+        "Amount": "19.25",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-09-09T13:44:05.42910537-04:00",
+    "Payee": "Best Buy",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-29.90",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Entertainment:Streaming",
+        "Amount": "29.90",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-31T13:44:05.42910537-04:00",
+    "Payee": "Best Buy",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-54.25",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Travel:Lodging",
+        "Amount": "54.25",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-09-07T13:44:05.42910537-04:00",
+    "Payee": "Local Coffee Shop",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-50.96",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Travel:Lodging",
+        "Amount": "50.96",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-05T13:44:05.42910537-04:00",
+    "Payee": "Uber",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-21.39",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Health:Pharmacy",
+        "Amount": "21.39",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-05-06T13:44:05.42910537-04:00",
+    "Payee": "Southwest Airlines",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-18.80",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Travel:Lodging",
+        "Amount": "18.80",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-03T13:44:05.42910537-04:00",
+    "Payee": "PG\u0026E Utilities",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-53.21",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Entertainment:Dining",
+        "Amount": "53.21",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-05-19T13:44:05.42910537-04:00",
+    "Payee": "Yelp",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-47.07",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Utilities:Internet",
+        "Amount": "47.07",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-04-19T13:44:05.42910537-04:00",
+    "Payee": "Grubhub",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-12.43",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Entertainment:Dining",
+        "Amount": "12.43",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-21T13:44:05.42910537-04:00",
+    "Payee": "Planet Fitness",
+    "Comment": "",
+    "Cleared": false,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-46.54",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Shopping:Clothing",
+        "Amount": "46.54",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-07T13:44:05.42910537-04:00",
+    "Payee": "Trader Joe's",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-52.26",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Transportation:Gas",
+        "Amount": "52.26",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-29T13:44:05.42910537-04:00",
+    "Payee": "Disney Plus",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-16.62",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Health:Pharmacy",
+        "Amount": "16.62",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-11T13:44:05.42910537-04:00",
+    "Payee": "Lowes",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-22.61",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Utilities:Electric",
+        "Amount": "22.61",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-10-01T13:44:05.42910537-04:00",
+    "Payee": "Spotify",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-20.79",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Health:Pharmacy",
+        "Amount": "20.79",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-09-12T13:44:05.42910537-04:00",
+    "Payee": "Tickets.com",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-19.62",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Entertainment:Streaming",
+        "Amount": "19.62",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-09-07T13:44:05.42910537-04:00",
+    "Payee": "Spotify",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-46.92",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Entertainment:Dining",
+        "Amount": "46.92",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-05-29T13:44:05.42910537-04:00",
+    "Payee": "Google Play",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-49.57",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Utilities:Internet",
+        "Amount": "49.57",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-01T13:44:05.42910537-04:00",
+    "Payee": "Chipotle",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-51.42",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Utilities:Electric",
+        "Amount": "51.42",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-19T13:44:05.42910537-04:00",
+    "Payee": "Amazon",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-42.80",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Food:Coffee",
+        "Amount": "42.80",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-04-21T13:44:05.42910537-04:00",
+    "Payee": "Whole Foods Market",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-33.13",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Health:Gym",
+        "Amount": "33.13",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-04-30T13:44:05.42910537-04:00",
+    "Payee": "CVS Pharmacy",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-35.42",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Food:Coffee",
+        "Amount": "35.42",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-26T13:44:05.42910537-04:00",
+    "Payee": "Gap",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-41.73",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Health:Pharmacy",
+        "Amount": "41.73",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-05-29T13:44:05.42910537-04:00",
+    "Payee": "Yelp",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-48.14",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Transportation:Ride",
+        "Amount": "48.14",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-05-14T13:44:05.42910537-04:00",
+    "Payee": "Whole Foods Market",
+    "Comment": "",
+    "Cleared": false,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-35.06",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Utilities:Internet",
+        "Amount": "35.06",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-04-24T13:44:05.42910537-04:00",
+    "Payee": "Amazon",
+    "Comment": "",
+    "Cleared": false,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-32.36",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Utilities:Electric",
+        "Amount": "32.36",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-13T13:44:05.42910537-04:00",
+    "Payee": "Lowes",
+    "Comment": "",
+    "Cleared": false,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-37.22",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Entertainment:Movies",
+        "Amount": "37.22",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-13T13:44:05.42910537-04:00",
+    "Payee": "Walgreens",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-23.94",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Shopping:Home",
+        "Amount": "23.94",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-27T13:44:05.42910537-04:00",
+    "Payee": "Hulu",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-40.67",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Health:Pharmacy",
+        "Amount": "40.67",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-05-07T13:44:05.42910537-04:00",
+    "Payee": "Netflix",
+    "Comment": "",
+    "Cleared": false,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-14.06",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Shopping:Electronics",
+        "Amount": "14.06",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-16T13:44:05.42910537-04:00",
+    "Payee": "LA Fitness",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-40.32",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Travel:Lodging",
+        "Amount": "40.32",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-10-01T13:44:05.42910537-04:00",
+    "Payee": "Lyft",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-7.09",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Utilities:Electric",
+        "Amount": "7.09",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-30T13:44:05.42910537-04:00",
+    "Payee": "Uber",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-6.05",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Food:Groceries",
+        "Amount": "6.05",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-25T13:44:05.42910537-04:00",
+    "Payee": "Comcast Internet",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-34.14",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Food:Groceries",
+        "Amount": "34.14",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-15T13:44:05.42910537-04:00",
+    "Payee": "Home Depot",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-25.46",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Food:Coffee",
+        "Amount": "25.46",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-23T13:44:05.42910537-04:00",
+    "Payee": "Apple Store",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-50.92",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Health:Gym",
+        "Amount": "50.92",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-04-25T13:44:05.42910537-04:00",
+    "Payee": "Airbnb",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-7.95",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Entertainment:Streaming",
+        "Amount": "7.95",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-05T13:44:05.42910537-04:00",
+    "Payee": "Walmart",
+    "Comment": "",
+    "Cleared": false,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-11.84",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Health:Pharmacy",
+        "Amount": "11.84",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-24T13:44:05.42910537-04:00",
+    "Payee": "UberEats",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-21.59",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Shopping:Electronics",
+        "Amount": "21.59",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-09-17T13:44:05.42910537-04:00",
+    "Payee": "REI",
+    "Comment": "",
+    "Cleared": false,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-18.22",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Travel:Lodging",
+        "Amount": "18.22",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-04-30T13:44:05.42910537-04:00",
+    "Payee": "Amazon",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-39.40",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Travel:Flights",
+        "Amount": "39.40",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-04T13:44:05.42910537-04:00",
+    "Payee": "Netflix",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-33.48",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Travel:Flights",
+        "Amount": "33.48",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-09-11T13:44:05.42910537-04:00",
+    "Payee": "United Airlines",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-48.63",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Entertainment:Streaming",
+        "Amount": "48.63",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-31T13:44:05.42910537-04:00",
+    "Payee": "Google Play",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-30.00",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Entertainment:Streaming",
+        "Amount": "30.00",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-07T13:44:05.42910537-04:00",
+    "Payee": "Google Play",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-41.77",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Food:Coffee",
+        "Amount": "41.77",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-21T13:44:05.42910537-04:00",
+    "Payee": "REI",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-43.28",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Utilities:Internet",
+        "Amount": "43.28",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-09T13:44:05.42910537-04:00",
+    "Payee": "IKEA",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-43.53",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Entertainment:Dining",
+        "Amount": "43.53",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-10-15T13:44:05.42910537-04:00",
+    "Payee": "UberEats",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-28.38",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Health:Pharmacy",
+        "Amount": "28.38",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-16T13:44:05.42910537-04:00",
+    "Payee": "Microsoft Store",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-51.40",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Shopping:Electronics",
+        "Amount": "51.40",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-09-03T13:44:05.42910537-04:00",
+    "Payee": "Airbnb",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-19.19",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Food:Groceries",
+        "Amount": "19.19",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-05-19T13:44:05.42910537-04:00",
+    "Payee": "Comcast Internet",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-27.22",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Health:Pharmacy",
+        "Amount": "27.22",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-19T13:44:05.42910537-04:00",
+    "Payee": "Hulu",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-49.97",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Transportation:Gas",
+        "Amount": "49.97",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-23T13:44:05.42910537-04:00",
+    "Payee": "Tickets.com",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-25.26",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Entertainment:Movies",
+        "Amount": "25.26",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-09T13:44:05.42910537-04:00",
+    "Payee": "H\u0026M",
+    "Comment": "",
+    "Cleared": false,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-31.68",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Travel:Flights",
+        "Amount": "31.68",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-03T13:44:05.42910537-04:00",
+    "Payee": "Target",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-46.37",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Food:Restaurants",
+        "Amount": "46.37",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-02T13:44:05.42910537-04:00",
+    "Payee": "Airbnb",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-39.95",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Travel:Lodging",
+        "Amount": "39.95",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-04-28T13:44:05.42910537-04:00",
+    "Payee": "Local Coffee Shop",
+    "Comment": "",
+    "Cleared": false,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-23.49",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Food:Groceries",
+        "Amount": "23.49",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-04-27T13:44:05.42910537-04:00",
+    "Payee": "Walgreens",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-51.48",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Shopping:Electronics",
+        "Amount": "51.48",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-11T13:44:05.42910537-04:00",
+    "Payee": "Olive Garden",
+    "Comment": "",
+    "Cleared": false,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-8.64",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Entertainment:Dining",
+        "Amount": "8.64",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-07T13:44:05.42910537-04:00",
+    "Payee": "Yelp",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-22.33",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Utilities:Internet",
+        "Amount": "22.33",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-09T13:44:05.42910537-04:00",
+    "Payee": "Marriott Hotel",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-32.86",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Entertainment:Dining",
+        "Amount": "32.86",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-20T13:44:05.42910537-04:00",
+    "Payee": "Marriott Hotel",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-27.05",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Transportation:Ride",
+        "Amount": "27.05",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-28T13:44:05.42910537-04:00",
+    "Payee": "Starbucks",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-41.77",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Transportation:Ride",
+        "Amount": "41.77",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-13T13:44:05.42910537-04:00",
+    "Payee": "Olive Garden",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-51.47",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Transportation:Gas",
+        "Amount": "51.47",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-10-14T13:44:05.42910537-04:00",
+    "Payee": "Starbucks",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-41.89",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Food:Coffee",
+        "Amount": "41.89",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-09-27T13:44:05.42910537-04:00",
+    "Payee": "Yelp",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-9.90",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Shopping:Electronics",
+        "Amount": "9.90",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-10-05T13:44:05.42910537-04:00",
+    "Payee": "Best Buy",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-44.76",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Transportation:Ride",
+        "Amount": "44.76",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-02T13:44:05.42910537-04:00",
+    "Payee": "Walgreens",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-44.81",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Health:Pharmacy",
+        "Amount": "44.81",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-20T13:44:05.42910537-04:00",
+    "Payee": "Comcast Internet",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-5.17",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Food:Coffee",
+        "Amount": "5.17",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-08T13:44:05.42910537-04:00",
+    "Payee": "UberEats",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-39.33",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Health:Pharmacy",
+        "Amount": "39.33",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-07-24T13:44:05.42910537-04:00",
+    "Payee": "H\u0026M",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-50.54",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Health:Pharmacy",
+        "Amount": "50.54",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-09-01T13:44:05.42910537-04:00",
+    "Payee": "Lyft",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-44.10",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Food:Restaurants",
+        "Amount": "44.10",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-04-28T13:44:05.42910537-04:00",
+    "Payee": "IKEA",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-25.59",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Transportation:Gas",
+        "Amount": "25.59",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-20T13:44:05.42910537-04:00",
+    "Payee": "Yelp",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-37.41",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Transportation:Ride",
+        "Amount": "37.41",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-06-28T13:44:05.42910537-04:00",
+    "Payee": "Zara",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-52.58",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Entertainment:Movies",
+        "Amount": "52.58",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-09-06T13:44:05.42910537-04:00",
+    "Payee": "Hulu",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-37.04",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Food:Groceries",
+        "Amount": "37.04",
+        "Comment": ""
+      }
+    ]
+  },
+  {
+    "Date": "2025-08-23T13:44:05.42910537-04:00",
+    "Payee": "Amazon",
+    "Comment": "",
+    "Cleared": true,
+    "Postings": [
+      {
+        "Account": "Assets:Checking",
+        "Amount": "-39.46",
+        "Comment": ""
+      },
+      {
+        "Account": "Expenses:Utilities:Internet",
+        "Amount": "39.46",
+        "Comment": ""
+      }
+    ]
+  }
+]
