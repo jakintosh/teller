@@ -34,6 +34,10 @@ func (m *Model) Init() tea.Cmd {
 // Update handles incoming messages and updates the model state
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.windowHeight = msg.Height
+		m.ensureBatchCursorVisible()
+		return m, nil
 	case statusTick:
 		if !m.statusExpiry.IsZero() && time.Now().After(m.statusExpiry) {
 			m.statusMessage = ""

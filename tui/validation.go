@@ -267,6 +267,7 @@ func (m *Model) confirmTransaction() bool {
 
 	m.lastDate = date
 	m.resetForm(date)
+	m.ensureBatchCursorVisible()
 	m.currentView = viewBatch
 	return true
 }

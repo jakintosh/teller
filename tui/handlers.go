@@ -31,10 +31,12 @@ func (m *Model) updateBatchView(msg tea.KeyMsg) tea.Cmd {
 	case "up", "k":
 		if m.cursor > 0 {
 			m.cursor--
+			m.ensureBatchCursorVisible()
 		}
 	case "down", "j":
 		if m.cursor < len(m.batch)-1 {
 			m.cursor++
+			m.ensureBatchCursorVisible()
 		}
 	case "n":
 		m.startNewTransaction()
@@ -196,6 +198,7 @@ func (m *Model) updateConfirmView(msg tea.KeyMsg) tea.Cmd {
 				m.setStatus(fmt.Sprintf("Wrote %d transaction(s) to %s", count, m.ledgerFilePath), statusSuccess, statusShortDuration)
 				m.batch = nil
 				m.cursor = 0
+				m.batchOffset = 0
 				if err := session.DeleteSession(); err != nil {
 					m.setStatus(fmt.Sprintf("Ledger written but session cleanup failed: %v", err), statusError, statusDuration)
 				}

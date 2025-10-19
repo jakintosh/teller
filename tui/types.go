@@ -93,6 +93,7 @@ type Model struct {
 	batch       []core.Transaction
 	cursor      int
 	currentView viewState
+	batchOffset int
 
 	form            transactionForm
 	templateOptions []intelligence.TemplateRecord
@@ -102,6 +103,7 @@ type Model struct {
 	pendingConfirm  confirmKind
 	editingIndex    int
 
+	windowHeight  int
 	lastDate      time.Time
 	statusMessage string
 	statusKind    statusKind

@@ -16,10 +16,57 @@ func (m *Model) renderBatchView() string {
 		fmt.Fprintf(&b, "%s\n", line)
 	}
 	b.WriteString("\n")
+
 	if len(m.batch) == 0 {
 		b.WriteString("No transactions in current batch.\n\n")
 	} else {
-		for i, tx := range m.batch {
+		// Calculate how many lines we can display
+		headerSize := 1 // title line
+		headerSize += len(m.loadSummaryLines())
+		headerSize += 1 // blank line after summary
+
+		footerSize := 1 // blank line before commands
+		if msg := m.statusLine(); msg != "" {
+			footerSize += 2 // status line + blank line
+		}
+		footerSize += 1 // command hints line
+
+		availableHeight := m.windowHeight - headerSize - footerSize
+		if availableHeight <= 0 {
+			availableHeight = 1
+		}
+
+		// Reserve space for scroll indicators
+		linesForIndicators := 0
+		if m.batchOffset > 0 {
+			linesForIndicators++ // "... N more above"
+		}
+		// Check if we'll need "... N more below" indicator
+		if m.batchOffset+availableHeight-linesForIndicators < len(m.batch) {
+			linesForIndicators++
+		}
+
+		// Calculate how many transactions we can actually show
+		transactionLines := availableHeight - linesForIndicators
+		if transactionLines <= 0 {
+			transactionLines = 1
+		}
+
+		// Determine which transactions to display
+		start := m.batchOffset
+		end := start + transactionLines
+		if end > len(m.batch) {
+			end = len(m.batch)
+		}
+
+		// Show scroll indicator if there are items above
+		if start > 0 {
+			fmt.Fprintf(&b, "... %d more above\n", start)
+		}
+
+		// Render visible transactions
+		for i := start; i < end; i++ {
+			tx := m.batch[i]
 			cursor := " "
 			if i == m.cursor {
 				cursor = formatCursor(">")
@@ -36,6 +83,12 @@ func (m *Model) renderBatchView() string {
 			}
 			fmt.Fprintf(&b, "%s %s %-28s (%s)\n", cursor, tx.Date.Format("2006-01-02"), payee, primary)
 		}
+
+		// Show scroll indicator if there are items below
+		if end < len(m.batch) {
+			fmt.Fprintf(&b, "... %d more below\n", len(m.batch)-end)
+		}
+
 		b.WriteString("\n")
 	}
 	if msg := m.statusLine(); msg != "" {
