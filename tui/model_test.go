@@ -149,7 +149,7 @@ func TestTransactionFlowAddsBatchEntry(t *testing.T) {
 		tm.Send(keyRunes(r))
 	}
 	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // credit account -> amount field
-	tm.Send(keyRunes('b'))                // balance shortcut fills value
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlB}) // balance shortcut fills value
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlS}) // confirm transaction
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlQ}) // quit program
 
@@ -227,7 +227,7 @@ func TestTransactionCapturesCommentsAndCleared(t *testing.T) {
 		tm.Send(keyRunes(r))
 	}
 	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // credit account -> amount
-	tm.Send(keyRunes('b'))                           // balance amount
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlB})          // balance amount
 	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // credit amount -> comment
 	for _, r := range "Paid via checking" {
 		tm.Send(keyRunes(r))
@@ -283,7 +283,7 @@ func TestBalanceShortcutFillsCreditDifference(t *testing.T) {
 	model.recalculateTotals()
 	model.focusSection(sectionCredit, 0, focusSectionAmount)
 
-	model.updateTransactionView(keyRunes('b'))
+	model.updateTransactionView(tea.KeyMsg{Type: tea.KeyCtrlB})
 
 	got := strings.TrimSpace(model.form.creditLines[0].amountInput.Value())
 	if got != "-120.00" {
