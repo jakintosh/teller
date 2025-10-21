@@ -73,6 +73,7 @@ func (m *Model) applyTemplate(record intelligence.TemplateRecord) {
 	}
 
 	m.currentView = viewTransaction
+	m.validateFocusState() // Validate focus before attempting to move it
 	m.focusFirstPostingLine()
 	m.recalculateTotals()
 }
@@ -80,6 +81,7 @@ func (m *Model) applyTemplate(record intelligence.TemplateRecord) {
 // skipTemplate returns to the transaction view without applying a template
 func (m *Model) skipTemplate() {
 	m.currentView = viewTransaction
+	m.validateFocusState() // Validate focus before attempting to move it
 	m.focusFirstPostingLine()
 	m.recalculateTotals()
 }
@@ -106,10 +108,7 @@ func (m *Model) ensureTemplateCursorVisible() {
 	if m.templateCursor >= m.templateOffset+visible {
 		m.templateOffset = m.templateCursor - visible + 1
 	}
-	maxOffset := len(m.templateOptions) - visible
-	if maxOffset < 0 {
-		maxOffset = 0
-	}
+	maxOffset := max(len(m.templateOptions)-visible, 0)
 	if m.templateOffset > maxOffset {
 		m.templateOffset = maxOffset
 	}

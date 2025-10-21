@@ -36,11 +36,9 @@ func (m *Model) refreshTemplateOptions() {
 	m.templatePayee = payee
 	if payee == "" {
 		m.templateOptions = nil
-		m.templateCursor = 0
-		m.templateOffset = 0
-		return
+	} else {
+		m.templateOptions = m.db.FindTemplates(payee)
 	}
-	m.templateOptions = m.db.FindTemplates(payee)
 	m.templateCursor = 0
 	m.templateOffset = 0
 }
@@ -52,6 +50,14 @@ func (m *Model) tryAcceptSuggestion() bool {
 	if input == nil {
 		return false
 	}
+
+	// Only accept suggestions from inputs that actually have focus.
+	// This prevents accessing stale suggestion state from unfocused inputs,
+	// which can happen during rapid focus changes or state transitions.
+	if !input.Focused() {
+		return false
+	}
+
 	suggestion := input.CurrentSuggestion()
 	if suggestion == "" {
 		return false

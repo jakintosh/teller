@@ -154,14 +154,6 @@ func (m *Model) statusLine() string {
 	return formatStatus(m.statusMessage, m.statusKind)
 }
 
-// refreshAfterLoad updates the UI after loading data
-func (m *Model) refreshAfterLoad() {
-	m.recalculateTotals()
-	if m.currentView == viewTransaction {
-		m.refreshSuggestions()
-	}
-}
-
 // ensureBatchCursorVisible adjusts the batch offset to keep the cursor visible within the terminal height
 func (m *Model) ensureBatchCursorVisible() {
 	if len(m.batch) == 0 {
@@ -219,10 +211,7 @@ func (m *Model) ensureBatchCursorVisible() {
 	}
 
 	// Ensure offset doesn't exceed bounds
-	maxOffset := len(m.batch) - transactionLines
-	if maxOffset < 0 {
-		maxOffset = 0
-	}
+	maxOffset := max(len(m.batch)-transactionLines, 0)
 	if m.batchOffset > maxOffset {
 		m.batchOffset = maxOffset
 	}

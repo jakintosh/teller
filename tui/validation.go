@@ -74,43 +74,6 @@ func (m *Model) canBalanceAnyLine() bool {
 	return unfilled == 1
 }
 
-// canBalanceCurrentLine returns true if the current line can be auto-balanced
-// This is only allowed when on an amount field with exactly one empty amount in the entire form
-func (m *Model) canBalanceCurrentLine() bool {
-	if m.form.focusedField != focusSectionAmount {
-		return false
-	}
-	line := m.currentLine()
-	if line == nil {
-		return false
-	}
-	if strings.TrimSpace(line.amountInput.Value()) != "" {
-		return false
-	}
-	return m.canBalanceAnyLine()
-}
-
-// balanceCurrentLine fills the current amount field with the value needed to make the total sum = 0
-// Returns true if the line was successfully balanced
-func (m *Model) balanceCurrentLine() bool {
-	if m.form.focusedField != focusSectionAmount {
-		return false
-	}
-	if line := m.currentLine(); line != nil {
-		// Calculate what value makes the sum of all amounts equal to zero
-		// New sum = (current remaining) - (current line amount) + X = 0
-		// Therefore: X = -(remaining - current line amount)
-		difference := m.form.remaining.Sub(lineAmount(line)).Neg()
-		if difference.IsZero() {
-			return false
-		}
-		line.amountInput.SetValue(difference.StringFixed(2))
-		line.amountInput.CursorEnd()
-		return true
-	}
-	return false
-}
-
 // balanceAnyLine finds the single unfilled amount field and fills it to balance the transaction
 // Works regardless of which field is currently focused
 // Returns true if a line was successfully balanced

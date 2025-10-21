@@ -44,6 +44,48 @@ func (m *Model) currentPosition() focusPosition {
 	}
 }
 
+// validateFocusState ensures that the current focus state is consistent with
+// the actual debit/credit line counts. If the focus is on a posting line that
+// no longer exists, it resets to a safe default position.
+func (m *Model) validateFocusState() {
+	// Only validate if focus is on a posting line field
+	switch m.form.focusedField {
+	case focusSectionAccount, focusSectionAmount, focusSectionComment:
+		var maxIndex int
+		switch m.form.focusedSection {
+		case sectionDebit:
+			maxIndex = len(m.form.debitLines) - 1
+		case sectionCredit:
+			maxIndex = len(m.form.creditLines) - 1
+		default:
+			// Invalid section - reset to payee
+			m.moveFocusToPosition(focusPosition{field: focusPayee})
+			return
+		}
+
+		// Check if current index is out of bounds
+		if m.form.focusedIndex < 0 || m.form.focusedIndex > maxIndex {
+			// Index is invalid - reset to first debit line if available
+			if len(m.form.debitLines) > 0 {
+				m.moveFocusToPosition(focusPosition{
+					field:   focusSectionAccount,
+					section: sectionDebit,
+					index:   0,
+				})
+			} else if len(m.form.creditLines) > 0 {
+				m.moveFocusToPosition(focusPosition{
+					field:   focusSectionAccount,
+					section: sectionCredit,
+					index:   0,
+				})
+			} else {
+				// No posting lines at all - reset to payee
+				m.moveFocusToPosition(focusPosition{field: focusPayee})
+			}
+		}
+	}
+}
+
 // findPositionInPath returns the index of the given position in the path, or -1 if not found
 func findPositionInPath(path []focusPosition, pos focusPosition) int {
 	for i, p := range path {
@@ -115,6 +157,13 @@ func (m *Model) advanceFocus() {
 	// Move to next position in path
 	if currentIdx >= 0 && currentIdx < len(path)-1 {
 		m.moveFocusToPosition(path[currentIdx+1])
+	} else if currentIdx == -1 {
+		// Current position not found in path - this can happen if focus state
+		// became stale after template operations or line modifications.
+		// Reset to first safe position.
+		if len(path) > 0 {
+			m.moveFocusToPosition(path[0])
+		}
 	}
 
 	m.refreshSuggestions()
@@ -130,6 +179,11 @@ func (m *Model) retreatFocus() {
 	// Move to previous position in path
 	if currentIdx > 0 {
 		m.moveFocusToPosition(path[currentIdx-1])
+	} else if currentIdx == -1 {
+		// Current position not found in path - reset to first safe position
+		if len(path) > 0 {
+			m.moveFocusToPosition(path[0])
+		}
 	}
 
 	m.refreshSuggestions()
@@ -168,12 +222,6 @@ func (m *Model) focusSection(section sectionType, index int, field focusedField)
 	}
 }
 
-// focusTemplateButton sets focus to the template button
-func (m *Model) focusTemplateButton() {
-	m.blurCurrent()
-	m.form.focusedField = focusTemplateButton
-}
-
 // focusFirstPostingLine moves focus to the first posting line in the focus path
 // This is the field that comes after the template button
 func (m *Model) focusFirstPostingLine() {
@@ -185,17 +233,46 @@ func (m *Model) focusFirstPostingLine() {
 	// Move to the next position after the template button
 	if templateIdx >= 0 && templateIdx < len(path)-1 {
 		m.moveFocusToPosition(path[templateIdx+1])
+		return
 	}
+
+	// Fallback: if we can't find the position after template button,
+	// try to move to the first debit line (should always exist after template operations)
+	if len(m.form.debitLines) > 0 {
+		m.moveFocusToPosition(focusPosition{
+			field:   focusSectionAccount,
+			section: sectionDebit,
+			index:   0,
+		})
+		return
+	}
+
+	// Last resort: if no debit lines, try first credit line
+	if len(m.form.creditLines) > 0 {
+		m.moveFocusToPosition(focusPosition{
+			field:   focusSectionAccount,
+			section: sectionCredit,
+			index:   0,
+		})
+		return
+	}
+
+	// Ultimate fallback: move to payee field (should never happen)
+	m.moveFocusToPosition(focusPosition{field: focusPayee})
 }
 
 // blurCurrent removes focus from the currently focused input field
 func (m *Model) blurCurrent() {
 	if line := m.currentLine(); line != nil {
+		// Clear suggestions before blurring to prevent stale state in unfocused inputs
+		line.accountInput.SetSuggestions(nil)
 		line.accountInput.Blur()
 		line.amountInput.Blur()
 		line.commentInput.Blur()
 	}
 	if m.form.focusedField == focusPayee {
+		// Clear suggestions before blurring to prevent stale state in unfocused inputs
+		m.form.payeeInput.SetSuggestions(nil)
 		m.form.payeeInput.Blur()
 	}
 	if m.form.focusedField == focusComment {
@@ -255,27 +332,4 @@ func (m *Model) currentTextInput() *textinput.Model {
 		}
 	}
 	return nil
-}
-
-// textInputFocused returns true if any text input currently has focus
-func (m *Model) textInputFocused() bool {
-	switch m.form.focusedField {
-	case focusPayee:
-		return m.form.payeeInput.Focused()
-	case focusComment:
-		return m.form.commentInput.Focused()
-	case focusSectionAccount:
-		if line := m.currentLine(); line != nil {
-			return line.accountInput.Focused()
-		}
-	case focusSectionAmount:
-		if line := m.currentLine(); line != nil {
-			return line.amountInput.Focused()
-		}
-	case focusSectionComment:
-		if line := m.currentLine(); line != nil {
-			return line.commentInput.Focused()
-		}
-	}
-	return false
 }
