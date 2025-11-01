@@ -6,12 +6,12 @@ import (
 	"log"
 	"os"
 
-	"git.sr.ht/~jakintosh/teller/core"
-	"git.sr.ht/~jakintosh/teller/intelligence"
+	"git.sr.ht/~jakintosh/teller/internal/core"
+	"git.sr.ht/~jakintosh/teller/internal/intelligence"
+	"git.sr.ht/~jakintosh/teller/internal/parser"
+	"git.sr.ht/~jakintosh/teller/internal/session"
+	"git.sr.ht/~jakintosh/teller/internal/tui"
 	"git.sr.ht/~jakintosh/teller/internal/version"
-	"git.sr.ht/~jakintosh/teller/parser"
-	"git.sr.ht/~jakintosh/teller/session"
-	"git.sr.ht/~jakintosh/teller/tui"
 	tea "github.com/charmbracelet/bubbletea"
 )
 

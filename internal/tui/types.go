@@ -3,8 +3,8 @@ package tui
 import (
 	"time"
 
-	"git.sr.ht/~jakintosh/teller/core"
-	"git.sr.ht/~jakintosh/teller/intelligence"
+	"git.sr.ht/~jakintosh/teller/internal/core"
+	"git.sr.ht/~jakintosh/teller/internal/intelligence"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/shopspring/decimal"
 )

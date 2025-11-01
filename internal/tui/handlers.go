@@ -3,7 +3,7 @@ package tui
 import (
 	"fmt"
 
-	"git.sr.ht/~jakintosh/teller/session"
+	"git.sr.ht/~jakintosh/teller/internal/session"
 	tea "github.com/charmbracelet/bubbletea"
 )
 

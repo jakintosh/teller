@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"git.sr.ht/~jakintosh/teller/intelligence"
+	"git.sr.ht/~jakintosh/teller/internal/intelligence"
 	tea "github.com/charmbracelet/bubbletea"
 )
 

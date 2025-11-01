@@ -109,5 +109,3 @@ func isValidMathExpression(expr string) bool {
 	validPattern := regexp.MustCompile(`^[0-9+\-*/.() ]+$`)
 	return validPattern.MatchString(expr)
 }
-
-

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"git.sr.ht/~jakintosh/teller/core"
+	"git.sr.ht/~jakintosh/teller/internal/core"
 )
 
 const sessionFileName = ".teller-session.tmp"

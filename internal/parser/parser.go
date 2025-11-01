@@ -8,7 +8,7 @@ import (
 	"time"
 	"unicode"
 
-	"git.sr.ht/~jakintosh/teller/core"
+	"git.sr.ht/~jakintosh/teller/internal/core"
 )
 
 // ParseIssue captures a non-fatal problem encountered while reading the ledger file.

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"git.sr.ht/~jakintosh/teller/core"
-	"git.sr.ht/~jakintosh/teller/intelligence"
+	"git.sr.ht/~jakintosh/teller/internal/core"
+	"git.sr.ht/~jakintosh/teller/internal/intelligence"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/exp/teatest"
 )

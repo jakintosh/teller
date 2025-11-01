@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"git.sr.ht/~jakintosh/teller/core"
+	"git.sr.ht/~jakintosh/teller/internal/core"
 )
 
 func TestNewIntelligenceDB(t *testing.T) {

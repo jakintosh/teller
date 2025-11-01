@@ -67,10 +67,10 @@ func TestIsSimpleNumber(t *testing.T) {
 	}{
 		{"42", true},
 		{"42.50", true},
-		{"$42.50", false}, // isSimpleNumber expects cleaned input
+		{"$42.50", false},   // isSimpleNumber expects cleaned input
 		{"1,234.56", false}, // isSimpleNumber expects cleaned input
 		{" 123.45 ", false}, // isSimpleNumber expects cleaned input
-		{"123.45", true}, // cleaned version should work
+		{"123.45", true},    // cleaned version should work
 		{"10 + 5", false},
 		{"(42)", false},
 		{"invalid", false},

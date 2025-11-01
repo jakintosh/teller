@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	"git.sr.ht/~jakintosh/teller/core"
-	"git.sr.ht/~jakintosh/teller/session"
-	"git.sr.ht/~jakintosh/teller/util"
+	"git.sr.ht/~jakintosh/teller/internal/core"
+	"git.sr.ht/~jakintosh/teller/internal/session"
+	"git.sr.ht/~jakintosh/teller/internal/util"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/shopspring/decimal"
 )

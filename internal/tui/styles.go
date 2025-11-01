@@ -5,8 +5,8 @@ import "github.com/charmbracelet/lipgloss"
 // Color definitions for the TUI
 var (
 	// Balance colors
-	balancedColor   = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))  // Green
-	unbalancedColor = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))   // Red
+	balancedColor   = lipgloss.NewStyle().Foreground(lipgloss.Color("10")) // Green
+	unbalancedColor = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))  // Red
 
 	// Status message colors
 	successColor = lipgloss.NewStyle().Foreground(lipgloss.Color("10")) // Green
@@ -18,12 +18,12 @@ var (
 	debitColor  = lipgloss.NewStyle().Foreground(lipgloss.Color("11")) // Yellow
 
 	// UI element colors
-	cursorColor     = lipgloss.NewStyle().Foreground(lipgloss.Color("13")).Bold(true) // Bright magenta
-	noIssuesColor   = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))            // Green
-	issuesColor     = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))             // Red
-	frequencyColor  = lipgloss.NewStyle().Foreground(lipgloss.Color("14"))            // Cyan
-	dimmedColor     = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))             // Dark grey for disabled commands
-	activeColor     = lipgloss.NewStyle().Foreground(lipgloss.Color("15"))            // White for active commands
+	cursorColor    = lipgloss.NewStyle().Foreground(lipgloss.Color("13")).Bold(true) // Bright magenta
+	noIssuesColor  = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))            // Green
+	issuesColor    = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))             // Red
+	frequencyColor = lipgloss.NewStyle().Foreground(lipgloss.Color("14"))            // Cyan
+	dimmedColor    = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))             // Dark grey for disabled commands
+	activeColor    = lipgloss.NewStyle().Foreground(lipgloss.Color("15"))            // White for active commands
 )
 
 // formatBalanced returns a colored string for the remaining balance

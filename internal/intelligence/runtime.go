@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"git.sr.ht/~jakintosh/teller/core"
+	"git.sr.ht/~jakintosh/teller/internal/core"
 	"github.com/shopspring/decimal"
 )
 

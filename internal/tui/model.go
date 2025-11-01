@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"git.sr.ht/~jakintosh/teller/core"
-	"git.sr.ht/~jakintosh/teller/intelligence"
+	"git.sr.ht/~jakintosh/teller/internal/core"
+	"git.sr.ht/~jakintosh/teller/internal/intelligence"
 	tea "github.com/charmbracelet/bubbletea"
 )
 

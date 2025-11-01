@@ -8,7 +8,8 @@ import (
 )
 
 func TestParseFile(t *testing.T) {
-	result, err := ParseFile("../testdata/fixtures/sample.ledger")
+	path := filepath.Join("..", "..", "testdata", "fixtures", "sample.ledger")
+	result, err := ParseFile(path)
 	if err != nil {
 		t.Fatalf("Failed to parse sample ledger file: %v", err)
 	}
