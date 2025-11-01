@@ -54,10 +54,7 @@ func (m *Model) renderBatchView() string {
 
 		// Determine which transactions to display
 		start := m.batchOffset
-		end := start + transactionLines
-		if end > len(m.batch) {
-			end = len(m.batch)
-		}
+		end := min(start+transactionLines, len(m.batch))
 
 		// Show scroll indicator if there are items above
 		if start > 0 {
@@ -185,7 +182,7 @@ func (m *Model) renderTransactionView() string {
 		"[shift+tab]prev",
 		formatCommand("[ctrl+a]add line", m.hasActiveLine()),
 		formatCommand("[ctrl+d]delete line", m.hasActiveLine()),
-		formatCommand("[b]alance", m.canBalanceAnyLine()),
+		formatCommand("[ctrl+b]balance", m.canBalanceAnyLine()),
 		"[ctrl+c]toggle cleared",
 		"[ctrl+s]confirm",
 		"[esc]cancel",
@@ -211,17 +208,11 @@ func (m *Model) renderTemplateView() string {
 		b.WriteString("No templates available\n\n[esc]skip")
 		return b.String()
 	}
-	start := m.templateOffset
-	if start < 0 {
-		start = 0
-	}
+	start := max(m.templateOffset, 0)
 	if start >= len(m.templateOptions) {
 		start = len(m.templateOptions) - 1
 	}
-	end := start + maxTemplateDisplay
-	if end > len(m.templateOptions) {
-		end = len(m.templateOptions)
-	}
+	end := min(start+maxTemplateDisplay, len(m.templateOptions))
 	for i := start; i < end; i++ {
 		tpl := m.templateOptions[i]
 		cursor := " "
@@ -289,11 +280,8 @@ func renderSuggestionList(input textinput.Model) string {
 	}
 	var b strings.Builder
 	b.WriteString("\n")
-	display := len(matches)
-	if display > maxSuggestionDisplay {
-		display = maxSuggestionDisplay
-	}
-	for i := 0; i < display; i++ {
+	display := min(len(matches), maxSuggestionDisplay)
+	for i := range display {
 		cursor := " "
 		if i == input.CurrentSuggestionIndex() {
 			cursor = formatCursor(">")
