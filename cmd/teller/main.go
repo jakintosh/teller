@@ -19,6 +19,7 @@ func main() {
 	flagSet := flag.NewFlagSet("teller", flag.ExitOnError)
 	flagSet.Usage = func() {
 		fmt.Fprintln(flagSet.Output(), "Usage: teller [--version] <ledger-file>")
+		fmt.Fprintln(flagSet.Output(), "       teller version")
 	}
 	showVersion := flagSet.Bool("version", false, "print version information and exit")
 	shortVersion := flagSet.Bool("v", false, "print version information and exit")
@@ -28,7 +29,12 @@ func main() {
 	}
 
 	if *showVersion || *shortVersion {
-		printVersion()
+		printShortVersion()
+		return
+	}
+
+	if flagSet.NArg() > 0 && flagSet.Arg(0) == "version" {
+		printDetailedVersion()
 		return
 	}
 
@@ -106,7 +112,12 @@ func main() {
 	}
 }
 
-func printVersion() {
+func printShortVersion() {
+	info := version.Data()
+	fmt.Println(info.Version)
+}
+
+func printDetailedVersion() {
 	info := version.Data()
 	fmt.Printf("teller %s\n", info.Version)
 	fmt.Printf("commit:\t%s\n", info.Commit)
