@@ -270,6 +270,12 @@ func (m *Model) renderConfirmView() string {
 		} else {
 			b.WriteString("Quit the application?\n\n")
 		}
+	case confirmDiscard:
+		if m.editingIndex >= 0 {
+			b.WriteString("Discard changes to this transaction?\n\n")
+		} else {
+			b.WriteString("Discard this transaction without saving?\n\n")
+		}
 	}
 	b.WriteString("[enter]confirm  [esc]cancel  [ctrl+q]quit immediately")
 	return b.String()

@@ -32,8 +32,10 @@ const (
 type confirmKind int
 
 const (
-	confirmWrite confirmKind = iota
+	confirmNone confirmKind = iota
+	confirmWrite
 	confirmQuit
+	confirmDiscard
 )
 
 // statusKind represents the type of status message being displayed
@@ -95,13 +97,15 @@ type Model struct {
 	currentView viewState
 	batchOffset int
 
-	form            transactionForm
-	templateOptions []intelligence.TemplateRecord
-	templateCursor  int
-	templateOffset  int
-	templatePayee   string
-	pendingConfirm  confirmKind
-	editingIndex    int
+	form              transactionForm
+	formBaseline      formSnapshot
+	templateOptions   []intelligence.TemplateRecord
+	templateCursor    int
+	templateOffset    int
+	templatePayee     string
+	pendingConfirm    confirmKind
+	confirmReturnView viewState
+	editingIndex      int
 
 	windowHeight  int
 	lastDate      time.Time
@@ -125,6 +129,21 @@ type transactionForm struct {
 	remaining      decimal.Decimal
 	debitTotal     decimal.Decimal
 	creditTotal    decimal.Decimal
+}
+
+type formSnapshot struct {
+	date    time.Time
+	cleared bool
+	payee   string
+	comment string
+	debit   []postingSnapshot
+	credit  []postingSnapshot
+}
+
+type postingSnapshot struct {
+	account string
+	amount  string
+	comment string
 }
 
 // postingLine represents a single debit or credit line in the form

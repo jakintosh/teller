@@ -37,6 +37,7 @@ func (m *Model) resetForm(baseDate time.Time) {
 	m.templateOffset = 0
 	m.templatePayee = ""
 	m.editingIndex = -1
+	m.captureFormBaseline()
 }
 
 // defaultDate returns the appropriate default date for a new transaction
@@ -99,6 +100,7 @@ func (m *Model) startEditingTransaction(index int) {
 	}
 	m.recalculateTotals()
 	m.focusSection(sectionCredit, 0, focusSectionAccount)
+	m.captureFormBaseline()
 	m.currentView = viewTransaction
 }
 
@@ -110,8 +112,9 @@ func (m *Model) cancelTransaction() {
 }
 
 // openConfirm switches to the confirmation view for the specified action
-func (m *Model) openConfirm(kind confirmKind) {
+func (m *Model) openConfirm(kind confirmKind, returnView viewState) {
 	m.pendingConfirm = kind
+	m.confirmReturnView = returnView
 	m.currentView = viewConfirm
 }
 

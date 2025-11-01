@@ -48,10 +48,10 @@ func (m *Model) updateBatchView(msg tea.KeyMsg) tea.Cmd {
 		if len(m.batch) == 0 {
 			m.setStatus("No transactions to write", statusInfo, statusShortDuration)
 		} else {
-			m.openConfirm(confirmWrite)
+			m.openConfirm(confirmWrite, viewBatch)
 		}
 	case "q":
-		m.openConfirm(confirmQuit)
+		m.openConfirm(confirmQuit, viewBatch)
 	}
 	return nil
 }
@@ -75,7 +75,11 @@ func (m *Model) updateTransactionView(msg tea.KeyMsg) tea.Cmd {
 		m.confirmTransaction()
 		return nil
 	case "esc":
-		m.cancelTransaction()
+		if m.formIsDirty() {
+			m.openConfirm(confirmDiscard, viewTransaction)
+		} else {
+			m.cancelTransaction()
+		}
 		return nil
 	case "shift+tab":
 		m.evaluateAmountField()
@@ -206,14 +210,19 @@ func (m *Model) updateConfirmView(msg tea.KeyMsg) tea.Cmd {
 				}
 			}
 			m.currentView = viewBatch
+			m.pendingConfirm = confirmNone
 		case confirmQuit:
 			if err := session.DeleteSession(); err != nil {
 				m.setStatus(fmt.Sprintf("Failed to clear session: %v", err), statusError, statusDuration)
 			}
 			return tea.Quit
+		case confirmDiscard:
+			m.cancelTransaction()
+			m.pendingConfirm = confirmNone
 		}
 	case "esc":
-		m.currentView = viewBatch
+		m.currentView = m.confirmReturnView
+		m.pendingConfirm = confirmNone
 	}
 	return nil
 }

@@ -128,7 +128,7 @@ func TestTransactionFlowAddsBatchEntry(t *testing.T) {
 	model := NewModel(db, ledgerPath, core.LoadSummary{})
 	tm := teatest.NewTestModel(t, model, teatest.WithInitialTermSize(80, 24))
 
-	tm.Send(keyRunes('n')) // start new transaction
+	tm.Send(keyRunes('n'))                // start new transaction
 	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // date -> payee
 	for _, r := range "Grocery Store" {
 		tm.Send(keyRunes(r))
@@ -148,7 +148,7 @@ func TestTransactionFlowAddsBatchEntry(t *testing.T) {
 	for _, r := range "Assets:Checking" {
 		tm.Send(keyRunes(r))
 	}
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // credit account -> amount field
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})   // credit account -> amount field
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlB}) // balance shortcut fills value
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlS}) // confirm transaction
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlQ}) // quit program
@@ -199,36 +199,36 @@ func TestTransactionCapturesCommentsAndCleared(t *testing.T) {
 	model := NewModel(db, ledgerPath, core.LoadSummary{})
 	tm := teatest.NewTestModel(t, model, teatest.WithInitialTermSize(80, 24))
 
-	tm.Send(keyRunes('n'))                // start new transaction
+	tm.Send(keyRunes('n'))                  // start new transaction
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlC}) // toggle cleared off
 	tm.Send(tea.KeyMsg{Type: tea.KeyTab})   // date -> payee
 	for _, r := range "Acme Supplies" {
 		tm.Send(keyRunes(r))
 	}
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // payee -> comment
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // payee -> comment
 	for _, r := range "Monthly restock" {
 		tm.Send(keyRunes(r))
 	}
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // comment -> template button
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // template -> debit account
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // comment -> template button
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // template -> debit account
 	for _, r := range "Expenses:Office:Supplies" {
 		tm.Send(keyRunes(r))
 	}
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // debit account -> amount
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // debit account -> amount
 	for _, r := range "123.45" {
 		tm.Send(keyRunes(r))
 	}
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // debit amount -> comment
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // debit amount -> comment
 	for _, r := range "Office restock" {
 		tm.Send(keyRunes(r))
 	}
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // debit comment -> credit account
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab}) // debit comment -> credit account
 	for _, r := range "Assets:Checking" {
 		tm.Send(keyRunes(r))
 	}
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // credit account -> amount
-	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlB})          // balance amount
-	tm.Send(tea.KeyMsg{Type: tea.KeyTab})            // credit amount -> comment
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})   // credit account -> amount
+	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlB}) // balance amount
+	tm.Send(tea.KeyMsg{Type: tea.KeyTab})   // credit amount -> comment
 	for _, r := range "Paid via checking" {
 		tm.Send(keyRunes(r))
 	}
@@ -372,5 +372,129 @@ func TestTemplateViewScrollsWithCursor(t *testing.T) {
 	}
 	if strings.Contains(view, "1.") {
 		t.Fatalf("expected template view to scroll past first item, got %q", view)
+	}
+}
+
+func TestTransactionEscPristineReturnsToBatch(t *testing.T) {
+	db := testDB(t)
+	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+	model.startNewTransaction()
+
+	if model.currentView != viewTransaction {
+		t.Fatalf("expected to be in transaction view, got %v", model.currentView)
+	}
+
+	model.updateTransactionView(tea.KeyMsg{Type: tea.KeyEsc})
+	if model.currentView != viewBatch {
+		t.Fatalf("expected esc on pristine form to return to batch view, got %v", model.currentView)
+	}
+}
+
+func TestTransactionEscDirtyPromptsConfirm(t *testing.T) {
+	db := testDB(t)
+	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+	model.startNewTransaction()
+	model.form.payeeInput.SetValue("Coffee Shop")
+
+	model.updateTransactionView(tea.KeyMsg{Type: tea.KeyEsc})
+	if model.currentView != viewConfirm {
+		t.Fatalf("expected esc on dirty form to open confirm view, got %v", model.currentView)
+	}
+	if model.pendingConfirm != confirmDiscard {
+		t.Fatalf("expected pending confirm to be discard, got %v", model.pendingConfirm)
+	}
+	if model.confirmReturnView != viewTransaction {
+		t.Fatalf("expected confirm to return to transaction view on cancel, got %v", model.confirmReturnView)
+	}
+	if strings.TrimSpace(model.form.payeeInput.Value()) != "Coffee Shop" {
+		t.Fatalf("expected form values to remain intact while confirming discard")
+	}
+
+	view := model.renderConfirmView()
+	if !strings.Contains(view, "Discard this transaction without saving?") {
+		t.Fatalf("expected discard confirmation message, got %q", view)
+	}
+}
+
+func TestTransactionDiscardConfirmCancel(t *testing.T) {
+	db := testDB(t)
+	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+	model.startNewTransaction()
+	model.form.payeeInput.SetValue("Coffee Shop")
+	model.updateTransactionView(tea.KeyMsg{Type: tea.KeyEsc})
+
+	model.updateConfirmView(tea.KeyMsg{Type: tea.KeyEsc})
+
+	if model.currentView != viewTransaction {
+		t.Fatalf("expected cancel to return to transaction editor, got %v", model.currentView)
+	}
+	if strings.TrimSpace(model.form.payeeInput.Value()) != "Coffee Shop" {
+		t.Fatalf("expected form input to remain after cancelling discard")
+	}
+	if model.pendingConfirm != confirmNone {
+		t.Fatalf("expected pending confirm cleared, got %v", model.pendingConfirm)
+	}
+}
+
+func TestTransactionDiscardConfirmAccepts(t *testing.T) {
+	db := testDB(t)
+	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+	model.startNewTransaction()
+	model.form.payeeInput.SetValue("Coffee Shop")
+	model.updateTransactionView(tea.KeyMsg{Type: tea.KeyEsc})
+
+	model.updateConfirmView(tea.KeyMsg{Type: tea.KeyEnter})
+
+	if model.currentView != viewBatch {
+		t.Fatalf("expected confirming discard to return to batch, got %v", model.currentView)
+	}
+	if strings.TrimSpace(model.form.payeeInput.Value()) != "" {
+		t.Fatalf("expected form reset after discard, got %q", model.form.payeeInput.Value())
+	}
+	if model.pendingConfirm != confirmNone {
+		t.Fatalf("expected pending confirm cleared, got %v", model.pendingConfirm)
+	}
+}
+
+func TestQuitPromptsConfirmation(t *testing.T) {
+	db := testDB(t)
+	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+
+	model.updateBatchView(keyRunes('q'))
+
+	if model.currentView != viewConfirm {
+		t.Fatalf("expected quit to open confirm view, got %v", model.currentView)
+	}
+	if model.pendingConfirm != confirmQuit {
+		t.Fatalf("expected confirm type quit, got %v", model.pendingConfirm)
+	}
+	if model.confirmReturnView != viewBatch {
+		t.Fatalf("expected quit confirm to return to batch on cancel, got %v", model.confirmReturnView)
+	}
+
+	view := model.renderConfirmView()
+	if !strings.Contains(view, "Quit the application?") {
+		t.Fatalf("expected empty batch quit message, got %q", view)
+	}
+
+	model.updateConfirmView(tea.KeyMsg{Type: tea.KeyEsc})
+	if model.currentView != viewBatch {
+		t.Fatalf("expected esc to return to batch view, got %v", model.currentView)
+	}
+	if model.pendingConfirm != confirmNone {
+		t.Fatalf("expected pending confirm cleared, got %v", model.pendingConfirm)
+	}
+}
+
+func TestQuitConfirmDisplaysPendingCount(t *testing.T) {
+	db := testDB(t)
+	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+	model.batch = []core.Transaction{{Payee: "One"}, {Payee: "Two"}}
+
+	model.updateBatchView(keyRunes('q'))
+
+	view := model.renderConfirmView()
+	if !strings.Contains(view, "Quit without writing 2 pending transaction(s)?") {
+		t.Fatalf("expected quit confirmation to include pending count, got %q", view)
 	}
 }
