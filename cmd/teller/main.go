@@ -1,26 +1,43 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"git.sr.ht/~jakintosh/teller/core"
 	"git.sr.ht/~jakintosh/teller/intelligence"
+	"git.sr.ht/~jakintosh/teller/internal/version"
 	"git.sr.ht/~jakintosh/teller/parser"
 	"git.sr.ht/~jakintosh/teller/session"
 	"git.sr.ht/~jakintosh/teller/tui"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func main() {
-	// Check for ledger file argument
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: teller <ledger-file>")
+	flagSet := flag.NewFlagSet("teller", flag.ExitOnError)
+	flagSet.Usage = func() {
+		fmt.Fprintln(flagSet.Output(), "Usage: teller [--version] <ledger-file>")
+	}
+	showVersion := flagSet.Bool("version", false, "print version information and exit")
+	shortVersion := flagSet.Bool("v", false, "print version information and exit")
+
+	if err := flagSet.Parse(os.Args[1:]); err != nil {
+		os.Exit(2)
+	}
+
+	if *showVersion || *shortVersion {
+		printVersion()
+		return
+	}
+
+	if flagSet.NArg() < 1 {
+		flagSet.Usage()
 		os.Exit(1)
 	}
 
-	ledgerFile := os.Args[1]
+	ledgerFile := flagSet.Arg(0)
 
 	// Parse the ledger file
 	parseResult, err := parser.ParseFile(ledgerFile)
@@ -87,4 +104,11 @@ func main() {
 	if _, err := program.Run(); err != nil {
 		log.Fatalf("TUI error: %v", err)
 	}
+}
+
+func printVersion() {
+	info := version.Data()
+	fmt.Printf("teller %s\n", info.Version)
+	fmt.Printf("commit:\t%s\n", info.Commit)
+	fmt.Printf("built:\t%s\n", info.BuildDate)
 }
