@@ -11,29 +11,17 @@ import (
 	"git.sr.ht/~jakintosh/teller/internal/core"
 )
 
-// ParseIssue captures a non-fatal problem encountered while reading the ledger file.
-type ParseIssue struct {
-	Line    int
-	Message string
-}
-
-// ParseResult contains the parsed transactions along with any issues that occurred.
-type ParseResult struct {
-	Transactions []core.Transaction
-	Issues       []ParseIssue
-}
-
 // ParseFile reads a ledger-cli file and converts it into Transaction structs.
-func ParseFile(filePath string) (ParseResult, error) {
+func ParseFile(filePath string) (core.ParseResult, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return ParseResult{}, fmt.Errorf("failed to open file: %w", err)
+		return core.ParseResult{}, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
 
 	var (
 		transactions       []core.Transaction
-		issues             []ParseIssue
+		issues             []core.ParseIssue
 		scanner            = bufio.NewScanner(file)
 		lineNumber         = 0
 		currentTransaction *core.Transaction
@@ -59,7 +47,7 @@ func ParseFile(filePath string) (ParseResult, error) {
 			// Parse transaction line
 			tx, err := parseTransactionLine(line)
 			if err != nil {
-				issues = append(issues, ParseIssue{
+				issues = append(issues, core.ParseIssue{
 					Line:    lineNumber,
 					Message: err.Error(),
 				})
@@ -73,7 +61,7 @@ func ParseFile(filePath string) (ParseResult, error) {
 
 		// Otherwise, it should be a posting line
 		if currentTransaction == nil {
-			issues = append(issues, ParseIssue{
+			issues = append(issues, core.ParseIssue{
 				Line:    lineNumber,
 				Message: "encountered posting before any transaction date",
 			})
@@ -82,7 +70,7 @@ func ParseFile(filePath string) (ParseResult, error) {
 
 		posting, err := parsePostingLine(line)
 		if err != nil {
-			issues = append(issues, ParseIssue{
+			issues = append(issues, core.ParseIssue{
 				Line:    lineNumber,
 				Message: err.Error(),
 			})
@@ -97,10 +85,10 @@ func ParseFile(filePath string) (ParseResult, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return ParseResult{}, fmt.Errorf("error reading file: %w", err)
+		return core.ParseResult{}, fmt.Errorf("error reading file: %w", err)
 	}
 
-	return ParseResult{Transactions: transactions, Issues: issues}, nil
+	return core.ParseResult{Transactions: transactions, Issues: issues}, nil
 }
 
 // parseTransactionLine parses a transaction header line.

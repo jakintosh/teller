@@ -8,19 +8,18 @@ import (
 	"fmt"
 	"time"
 
-	"git.sr.ht/~jakintosh/teller/internal/core"
 	"git.sr.ht/~jakintosh/teller/internal/intelligence"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 // NewModel creates a new TUI model with the given intelligence database and ledger file path
-func NewModel(db *intelligence.IntelligenceDB, ledgerFilePath string, summary core.LoadSummary) *Model {
+func NewModel(db *intelligence.IntelligenceDB, ledgerFilePath string, report intelligence.BuildReport) *Model {
 	m := &Model{
 		db:             db,
 		ledgerFilePath: ledgerFilePath,
 		currentView:    viewBatch,
 		editingIndex:   -1,
-		loadSummary:    summary,
+		buildReport:    report,
 	}
 	m.resetForm(time.Now())
 	return m

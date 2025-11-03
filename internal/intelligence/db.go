@@ -24,9 +24,15 @@ type TemplateRecord struct {
 
 // BuildReport captures metrics and issues encountered while constructing the intelligence DB.
 type BuildReport struct {
+	Transactions    int
 	UniquePayees    int
 	UniqueTemplates int
-	Issues          []string
+	Issues          []core.LoadIssue
+}
+
+// HasIssues reports whether any issues were captured during startup.
+func (r BuildReport) HasIssues() bool {
+	return len(r.Issues) > 0
 }
 
 // IntelligenceDB is the in-memory data store for all suggestion features.
@@ -38,12 +44,14 @@ type IntelligenceDB struct {
 }
 
 // NewIntelligenceDB creates a new intelligence database from parsed transactions.
-func NewIntelligenceDB(transactions []core.Transaction) (*IntelligenceDB, BuildReport, error) {
+func NewIntelligenceDB(result core.ParseResult) (*IntelligenceDB, BuildReport, error) {
 	db := &IntelligenceDB{
 		Accounts:  NewTrie(),
 		Templates: make(map[string][]TemplateRecord),
 		Runtime:   NewRuntimeIntelligence(),
 	}
+
+	transactions := result.Transactions
 
 	// Extract unique payees
 	payeeSet := make(map[string]bool)
@@ -206,9 +214,24 @@ func NewIntelligenceDB(transactions []core.Transaction) (*IntelligenceDB, BuildR
 	}
 
 	report := BuildReport{
+		Transactions:    len(transactions),
 		UniquePayees:    len(db.Payees),
 		UniqueTemplates: totalTemplates,
-		Issues:          issues,
+		Issues:          make([]core.LoadIssue, 0, len(result.Issues)+len(issues)),
+	}
+
+	for _, issue := range result.Issues {
+		report.Issues = append(report.Issues, core.LoadIssue{
+			Stage:   "parser",
+			Message: fmt.Sprintf("line %d: %s", issue.Line, issue.Message),
+		})
+	}
+
+	for _, msg := range issues {
+		report.Issues = append(report.Issues, core.LoadIssue{
+			Stage:   "intelligence",
+			Message: msg,
+		})
 	}
 
 	return db, report, nil

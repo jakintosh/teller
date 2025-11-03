@@ -90,7 +90,7 @@ type focusPosition struct {
 type Model struct {
 	db             *intelligence.IntelligenceDB
 	ledgerFilePath string
-	loadSummary    core.LoadSummary
+	buildReport    intelligence.BuildReport
 
 	batch       []core.Transaction
 	cursor      int

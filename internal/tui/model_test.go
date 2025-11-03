@@ -36,7 +36,8 @@ func testDB(t *testing.T) *intelligence.IntelligenceDB {
 		},
 	}
 
-	db, report, err := intelligence.NewIntelligenceDB(transactions)
+	result := core.ParseResult{Transactions: transactions}
+	db, report, err := intelligence.NewIntelligenceDB(result)
 	if err != nil {
 		t.Fatalf("failed to build intelligence db: %v", err)
 	}
@@ -48,8 +49,8 @@ func testDB(t *testing.T) *intelligence.IntelligenceDB {
 
 func TestBatchViewDisplaysLoadSummary(t *testing.T) {
 	db := testDB(t)
-	summary := core.LoadSummary{Transactions: 9, UniquePayees: 4, UniqueTemplates: 2}
-	model := NewModel(db, "ledger.dat", summary)
+	report := intelligence.BuildReport{Transactions: 9, UniquePayees: 4, UniqueTemplates: 2}
+	model := NewModel(db, "ledger.dat", report)
 	view := model.renderBatchView()
 	if !strings.Contains(view, "Data load: 9 transactions • 4 payees • 2 templates") {
 		t.Fatalf("batch view missing load summary: %q", view)
@@ -61,7 +62,7 @@ func TestBatchViewDisplaysLoadSummary(t *testing.T) {
 
 func TestBatchViewDisplaysLoadIssues(t *testing.T) {
 	db := testDB(t)
-	summary := core.LoadSummary{
+	report := intelligence.BuildReport{
 		Transactions:    9,
 		UniquePayees:    4,
 		UniqueTemplates: 2,
@@ -70,7 +71,7 @@ func TestBatchViewDisplaysLoadIssues(t *testing.T) {
 			{Stage: "intelligence", Message: "missing template"},
 		},
 	}
-	model := NewModel(db, "ledger.dat", summary)
+	model := NewModel(db, "ledger.dat", report)
 	view := model.renderBatchView()
 	if !strings.Contains(view, "Load issues: 2 (first: [PARSER] line 3: invalid amount)") {
 		t.Fatalf("batch view missing issue summary: %q", view)
@@ -79,7 +80,7 @@ func TestBatchViewDisplaysLoadIssues(t *testing.T) {
 
 func TestNewTransactionHighlightsDaySegment(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+	model := NewModel(db, "ledger.dat", intelligence.BuildReport{})
 
 	if model.form.date.segment != dateSegmentDay {
 		t.Fatalf("expected initial date segment to default to day, got %v", model.form.date.segment)
@@ -93,7 +94,7 @@ func TestNewTransactionHighlightsDaySegment(t *testing.T) {
 
 func TestTransactionActionsStackedVertically(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+	model := NewModel(db, "ledger.dat", intelligence.BuildReport{})
 	model.startNewTransaction()
 
 	view := model.renderTransactionView()
@@ -125,7 +126,7 @@ func TestTransactionFlowAddsBatchEntry(t *testing.T) {
 		t.Fatalf("create ledger file: %v", err)
 	}
 
-	model := NewModel(db, ledgerPath, core.LoadSummary{})
+	model := NewModel(db, ledgerPath, intelligence.BuildReport{})
 	tm := teatest.NewTestModel(t, model, teatest.WithInitialTermSize(80, 24))
 
 	tm.Send(keyRunes('n'))                // start new transaction
@@ -196,7 +197,7 @@ func TestTransactionCapturesCommentsAndCleared(t *testing.T) {
 		t.Fatalf("create ledger file: %v", err)
 	}
 
-	model := NewModel(db, ledgerPath, core.LoadSummary{})
+	model := NewModel(db, ledgerPath, intelligence.BuildReport{})
 	tm := teatest.NewTestModel(t, model, teatest.WithInitialTermSize(80, 24))
 
 	tm.Send(keyRunes('n'))                  // start new transaction
@@ -262,7 +263,7 @@ func TestTransactionCapturesCommentsAndCleared(t *testing.T) {
 
 func TestDeleteLineKeepsAtLeastOne(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "test-ledger.dat", core.LoadSummary{})
+	model := NewModel(db, "test-ledger.dat", intelligence.BuildReport{})
 	model.startNewTransaction()
 	model.addLine(sectionDebit, false)
 	model.focusSection(sectionDebit, 1, focusSectionAccount)
@@ -276,7 +277,7 @@ func TestDeleteLineKeepsAtLeastOne(t *testing.T) {
 
 func TestBalanceShortcutFillsCreditDifference(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+	model := NewModel(db, "ledger.dat", intelligence.BuildReport{})
 	model.startNewTransaction()
 
 	model.form.debitLines[0].amountInput.SetValue("120")
@@ -293,7 +294,7 @@ func TestBalanceShortcutFillsCreditDifference(t *testing.T) {
 
 func TestTemplateSelectionPopulatesSections(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+	model := NewModel(db, "ledger.dat", intelligence.BuildReport{})
 	model.startNewTransaction()
 	model.templateOptions = []intelligence.TemplateRecord{{
 		DebitAccounts:  []string{"Expenses:Rent", "Expenses:Utilities"},
@@ -321,7 +322,7 @@ func TestTemplateSelectionPopulatesSections(t *testing.T) {
 
 func TestTemplateViewDisplaysAccountsVertically(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+	model := NewModel(db, "ledger.dat", intelligence.BuildReport{})
 	model.templateOptions = []intelligence.TemplateRecord{{
 		DebitAccounts:  []string{"Expenses:Rent", "Expenses:Utilities"},
 		CreditAccounts: []string{"Assets:Checking"},
@@ -344,7 +345,7 @@ func TestTemplateViewDisplaysAccountsVertically(t *testing.T) {
 
 func TestTemplateViewScrollsWithCursor(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+	model := NewModel(db, "ledger.dat", intelligence.BuildReport{})
 
 	for i := 0; i < maxTemplateDisplay+1; i++ {
 		model.templateOptions = append(model.templateOptions, intelligence.TemplateRecord{
@@ -377,7 +378,7 @@ func TestTemplateViewScrollsWithCursor(t *testing.T) {
 
 func TestTransactionEscPristineReturnsToBatch(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+	model := NewModel(db, "ledger.dat", intelligence.BuildReport{})
 	model.startNewTransaction()
 
 	if model.currentView != viewTransaction {
@@ -392,7 +393,7 @@ func TestTransactionEscPristineReturnsToBatch(t *testing.T) {
 
 func TestTransactionEscDirtyPromptsConfirm(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+	model := NewModel(db, "ledger.dat", intelligence.BuildReport{})
 	model.startNewTransaction()
 	model.form.payeeInput.SetValue("Coffee Shop")
 
@@ -418,7 +419,7 @@ func TestTransactionEscDirtyPromptsConfirm(t *testing.T) {
 
 func TestTransactionDiscardConfirmCancel(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+	model := NewModel(db, "ledger.dat", intelligence.BuildReport{})
 	model.startNewTransaction()
 	model.form.payeeInput.SetValue("Coffee Shop")
 	model.updateTransactionView(tea.KeyMsg{Type: tea.KeyEsc})
@@ -438,7 +439,7 @@ func TestTransactionDiscardConfirmCancel(t *testing.T) {
 
 func TestTransactionDiscardConfirmAccepts(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+	model := NewModel(db, "ledger.dat", intelligence.BuildReport{})
 	model.startNewTransaction()
 	model.form.payeeInput.SetValue("Coffee Shop")
 	model.updateTransactionView(tea.KeyMsg{Type: tea.KeyEsc})
@@ -458,7 +459,7 @@ func TestTransactionDiscardConfirmAccepts(t *testing.T) {
 
 func TestQuitPromptsConfirmation(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+	model := NewModel(db, "ledger.dat", intelligence.BuildReport{})
 
 	model.updateBatchView(keyRunes('q'))
 
@@ -488,7 +489,7 @@ func TestQuitPromptsConfirmation(t *testing.T) {
 
 func TestQuitConfirmDisplaysPendingCount(t *testing.T) {
 	db := testDB(t)
-	model := NewModel(db, "ledger.dat", core.LoadSummary{})
+	model := NewModel(db, "ledger.dat", intelligence.BuildReport{})
 	model.batch = []core.Transaction{{Payee: "One"}, {Payee: "Two"}}
 
 	model.updateBatchView(keyRunes('q'))

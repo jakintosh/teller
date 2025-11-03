@@ -46,7 +46,8 @@ func TestNewIntelligenceDB(t *testing.T) {
 	}
 
 	expectedPayeeCount := 3 // Super Grocery Store, Gas Station, Coffee Shop
-	db, report, err := NewIntelligenceDB(transactions)
+	result := core.ParseResult{Transactions: transactions}
+	db, report, err := NewIntelligenceDB(result)
 	if err != nil {
 		t.Fatalf("Failed to create IntelligenceDB: %v", err)
 	}
@@ -89,7 +90,8 @@ func TestFindPayees(t *testing.T) {
 		{Payee: "Gas Station", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "1"}, {Account: "Income:Misc", Amount: "-1"}}},
 	}
 
-	db, report, err := NewIntelligenceDB(transactions)
+	result := core.ParseResult{Transactions: transactions}
+	db, report, err := NewIntelligenceDB(result)
 	if err != nil {
 		t.Fatalf("Failed to create IntelligenceDB: %v", err)
 	}
@@ -168,7 +170,8 @@ func TestFindAccounts(t *testing.T) {
 		},
 	}
 
-	db, report, err := NewIntelligenceDB(transactions)
+	result := core.ParseResult{Transactions: transactions}
+	db, report, err := NewIntelligenceDB(result)
 	if err != nil {
 		t.Fatalf("Failed to create IntelligenceDB: %v", err)
 	}
@@ -233,7 +236,8 @@ func TestNewIntelligenceDBWithElidedPosting(t *testing.T) {
 		},
 	}
 
-	db, report, err := NewIntelligenceDB(transactions)
+	result := core.ParseResult{Transactions: transactions}
+	db, report, err := NewIntelligenceDB(result)
 	if err != nil {
 		t.Fatalf("NewIntelligenceDB returned error: %v", err)
 	}
@@ -296,7 +300,8 @@ func TestFindTemplates(t *testing.T) {
 		},
 	}
 
-	db, report, err := NewIntelligenceDB(transactions)
+	result := core.ParseResult{Transactions: transactions}
+	db, report, err := NewIntelligenceDB(result)
 	if err != nil {
 		t.Fatalf("Failed to create IntelligenceDB: %v", err)
 	}
@@ -365,7 +370,8 @@ func TestTemplatesIncludeElidedAmounts(t *testing.T) {
 		},
 	}
 
-	db, report, err := NewIntelligenceDB(transactions)
+	result := core.ParseResult{Transactions: transactions}
+	db, report, err := NewIntelligenceDB(result)
 	if err != nil {
 		t.Fatalf("Failed to create IntelligenceDB: %v", err)
 	}
@@ -418,7 +424,8 @@ func TestMergedTemplateFrequency(t *testing.T) {
 			},
 		},
 	}
-	db, _, err := NewIntelligenceDB(baseTransactions)
+	baseResult := core.ParseResult{Transactions: baseTransactions}
+	db, _, err := NewIntelligenceDB(baseResult)
 	if err != nil {
 		t.Fatalf("Failed to create base database: %v", err)
 	}
@@ -483,7 +490,8 @@ func TestMergedTemplatesWithNewPattern(t *testing.T) {
 			},
 		},
 	}
-	db, _, err := NewIntelligenceDB(baseTransactions)
+	baseResult := core.ParseResult{Transactions: baseTransactions}
+	db, _, err := NewIntelligenceDB(baseResult)
 	if err != nil {
 		t.Fatalf("Failed to create base database: %v", err)
 	}

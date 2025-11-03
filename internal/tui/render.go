@@ -99,21 +99,21 @@ func (m *Model) renderBatchView() string {
 func (m *Model) loadSummaryLines() []string {
 	line := fmt.Sprintf(
 		"Data load: %d transactions • %d payees • %d templates",
-		m.loadSummary.Transactions,
-		m.loadSummary.UniquePayees,
-		m.loadSummary.UniqueTemplates,
+		m.buildReport.Transactions,
+		m.buildReport.UniquePayees,
+		m.buildReport.UniqueTemplates,
 	)
 	lines := []string{line}
-	if m.loadSummary.HasIssues() {
-		first := m.loadSummary.Issues[0]
+	if m.buildReport.HasIssues() {
+		first := m.buildReport.Issues[0]
 		stage := strings.ToUpper(first.Stage)
 		if stage == "" {
 			stage = "GENERAL"
 		}
-		if len(m.loadSummary.Issues) == 1 {
+		if len(m.buildReport.Issues) == 1 {
 			lines = append(lines, formatIssues(fmt.Sprintf("Load issue: [%s] %s", stage, first.Message)))
 		} else {
-			lines = append(lines, formatIssues(fmt.Sprintf("Load issues: %d (first: [%s] %s)", len(m.loadSummary.Issues), stage, first.Message)))
+			lines = append(lines, formatIssues(fmt.Sprintf("Load issues: %d (first: [%s] %s)", len(m.buildReport.Issues), stage, first.Message)))
 		}
 		return lines
 	}
