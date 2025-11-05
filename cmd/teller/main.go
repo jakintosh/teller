@@ -19,14 +19,6 @@ var versionInfo = version.Data()
 var versionCmd = &args.Command{
 	Name: "version",
 	Help: "print detailed version information",
-	Options: []args.Option{
-		{
-			Short: 'v',
-			Long:  "verbose",
-			Type:  args.OptionTypeFlag,
-			Help:  "display verbose version information",
-		},
-	},
 	Handler: func(i *args.Input) error {
 		if i.GetFlag("verbose") {
 			fmt.Printf("teller %s\n", versionInfo.Version)
@@ -44,6 +36,14 @@ var root = &args.Command{
 	Author:  "Jakintosh",
 	Version: versionInfo.Version,
 	Help:    "Categorize ledger transactions in a terminal UI.",
+	Options: []args.Option{
+		{
+			Short: 'v',
+			Long:  "verbose",
+			Type:  args.OptionTypeFlag,
+			Help:  "display verbose version information",
+		},
+	},
 	Operands: []args.Operand{
 		{
 			Name: "ledger-file",
