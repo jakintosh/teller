@@ -16,6 +16,15 @@ import (
 
 var versionInfo = version.Data()
 
+var config = &args.Config{
+	Author:  "jakintosh",
+	Version: versionInfo.Version,
+	HelpOption: &args.HelpOption{
+		Short: 'h',
+		Long:  "help",
+	},
+}
+
 var versionCmd = &args.Command{
 	Name: "version",
 	Help: "print detailed version information",
@@ -32,16 +41,15 @@ var versionCmd = &args.Command{
 }
 
 var root = &args.Command{
-	Name:    "teller",
-	Author:  "Jakintosh",
-	Version: versionInfo.Version,
-	Help:    "Categorize ledger transactions in a terminal UI.",
+	Name:   "teller",
+	Config: config,
+	Help:   "Categorize ledger transactions in a terminal UI.",
 	Options: []args.Option{
 		{
 			Short: 'v',
 			Long:  "verbose",
 			Type:  args.OptionTypeFlag,
-			Help:  "display verbose version information",
+			Help:  "use verbose output",
 		},
 	},
 	Operands: []args.Operand{

@@ -3,7 +3,7 @@ module git.sr.ht/~jakintosh/teller
 go 1.25.1
 
 require (
-	git.sr.ht/~jakintosh/command-go v0.1.2
+	git.sr.ht/~jakintosh/command-go v0.2.0
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.9
