@@ -2,6 +2,7 @@ CLAUDE.md
 bin/
 *.ledger
 .teller-session.tmp
+cmd/*/version_generated.go
 
 # Except for test data
 !testdata/fixtures/*.ledger

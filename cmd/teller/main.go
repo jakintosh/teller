@@ -5,40 +5,24 @@ import (
 	"log"
 
 	"git.sr.ht/~jakintosh/command-go/pkg/args"
+	"git.sr.ht/~jakintosh/command-go/pkg/version"
 	"git.sr.ht/~jakintosh/teller/internal/core"
 	"git.sr.ht/~jakintosh/teller/internal/intelligence"
 	"git.sr.ht/~jakintosh/teller/internal/parser"
 	"git.sr.ht/~jakintosh/teller/internal/session"
 	"git.sr.ht/~jakintosh/teller/internal/tui"
-	"git.sr.ht/~jakintosh/teller/internal/version"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-var versionInfo = version.Data()
-
 var config = &args.Config{
 	Author:  "jakintosh",
-	Version: versionInfo.Version,
+	Version: VersionInfo.Version,
 	HelpOption: &args.HelpOption{
 		Short: 'h',
 		Long:  "help",
 	},
 }
 
-var versionCmd = &args.Command{
-	Name: "version",
-	Help: "print detailed version information",
-	Handler: func(i *args.Input) error {
-		if i.GetFlag("verbose") {
-			fmt.Printf("teller %s\n", versionInfo.Version)
-			fmt.Printf("commit:\t%s\n", versionInfo.Commit)
-			fmt.Printf("built:\t%s\n", versionInfo.BuildDate)
-		} else {
-			fmt.Println(versionInfo.Version)
-		}
-		return nil
-	},
-}
 
 var root = &args.Command{
 	Name:   "teller",
@@ -59,7 +43,7 @@ var root = &args.Command{
 		},
 	},
 	Subcommands: []*args.Command{
-		versionCmd,
+		version.Command(VersionInfo),
 	},
 	Handler: func(i *args.Input) error {
 
