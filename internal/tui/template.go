@@ -75,6 +75,7 @@ func (m *Model) applyTemplate(record intelligence.TemplateRecord) {
 	m.currentView = viewTransaction
 	m.validateFocusState() // Validate focus before attempting to move it
 	m.focusFirstPostingLine()
+	m.refreshSuggestions()
 	m.recalculateTotals()
 }
 
@@ -83,6 +84,7 @@ func (m *Model) skipTemplate() {
 	m.currentView = viewTransaction
 	m.validateFocusState() // Validate focus before attempting to move it
 	m.focusFirstPostingLine()
+	m.refreshSuggestions()
 	m.recalculateTotals()
 }
 

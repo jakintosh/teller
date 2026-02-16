@@ -12,7 +12,7 @@ import (
 // This is separate from the base IntelligenceDB to clearly distinguish between
 // ledger-based and runtime-added data.
 type RuntimeIntelligence struct {
-	Payees    []string
+	Payees    map[string]int
 	Accounts  *Trie
 	Templates map[string][]TemplateRecord
 }
@@ -20,7 +20,7 @@ type RuntimeIntelligence struct {
 // NewRuntimeIntelligence creates an empty runtime intelligence database.
 func NewRuntimeIntelligence() *RuntimeIntelligence {
 	return &RuntimeIntelligence{
-		Payees:    []string{},
+		Payees:    make(map[string]int),
 		Accounts:  NewTrie(),
 		Templates: make(map[string][]TemplateRecord),
 	}
@@ -32,18 +32,19 @@ func NewRuntimeIntelligence() *RuntimeIntelligence {
 func (r *RuntimeIntelligence) BuildFromBatch(transactions []core.Transaction) {
 	// Create a fresh instance
 	*r = RuntimeIntelligence{
+		Payees:    make(map[string]int),
 		Accounts:  NewTrie(),
 		Templates: make(map[string][]TemplateRecord),
 	}
 
-	// Extract unique payees
-	payeeSet := make(map[string]bool)
+	// Track payee usage frequencies
+	payeeFreq := make(map[string]int)
 	// Extract unique accounts
 	accountSet := make(map[string]bool)
 
 	for _, tx := range transactions {
 		if tx.Payee != "" {
-			payeeSet[tx.Payee] = true
+			payeeFreq[tx.Payee]++
 		}
 
 		// Process all postings to extract account names
@@ -54,12 +55,7 @@ func (r *RuntimeIntelligence) BuildFromBatch(transactions []core.Transaction) {
 		}
 	}
 
-	// Convert payees to sorted slice
-	r.Payees = make([]string, 0, len(payeeSet))
-	for payee := range payeeSet {
-		r.Payees = append(r.Payees, payee)
-	}
-	sort.Strings(r.Payees)
+	r.Payees = payeeFreq
 
 	// Insert all accounts into the Trie
 	for account := range accountSet {
@@ -188,12 +184,13 @@ func (r *RuntimeIntelligence) FindPayees(prefix string) []string {
 	prefix = strings.ToLower(prefix)
 	var matches []string
 
-	for _, payee := range r.Payees {
+	for payee := range r.Payees {
 		if strings.HasPrefix(strings.ToLower(payee), prefix) {
 			matches = append(matches, payee)
 		}
 	}
 
+	sort.Strings(matches)
 	return matches
 }
 

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"git.sr.ht/~jakintosh/teller/internal/intelligence"
+	"git.sr.ht/~jakintosh/teller/internal/session"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -31,7 +32,33 @@ func (m *Model) Init() tea.Cmd {
 }
 
 // Update handles incoming messages and updates the model state
-func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (updated tea.Model, cmd tea.Cmd) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			recoveredErr := fmt.Errorf("unexpected internal error: %v", recovered)
+			if len(m.batch) > 0 {
+				if saveErr := session.SaveBatch(m.batch); saveErr != nil {
+					recoveredErr = fmt.Errorf("%w (failed to persist batch session: %v)", recoveredErr, saveErr)
+				} else {
+					recoveredErr = fmt.Errorf("%w (pending batch session was saved)", recoveredErr)
+				}
+			}
+			m.err = recoveredErr
+			updated = m
+			cmd = nil
+		}
+	}()
+
+	if m.err != nil {
+		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+			switch keyMsg.String() {
+			case "ctrl+q", "ctrl+c":
+				return m, tea.Quit
+			}
+		}
+		return m, nil
+	}
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.windowHeight = msg.Height

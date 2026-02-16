@@ -71,6 +71,10 @@ func (m *Model) addLine(section sectionType, cloneCategory bool) {
 	case sectionCredit:
 		lines = &m.form.creditLines
 	}
+	if lines == nil {
+		m.setStatus("Unable to add line: invalid section", statusError, statusShortDuration)
+		return
+	}
 	seed := ""
 	if cloneCategory {
 		if line := m.currentLine(); line != nil {

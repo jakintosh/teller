@@ -37,7 +37,7 @@ func (r BuildReport) HasIssues() bool {
 
 // IntelligenceDB is the in-memory data store for all suggestion features.
 type IntelligenceDB struct {
-	Payees    []string
+	Payees    map[string]int
 	Accounts  *Trie
 	Templates map[string][]TemplateRecord
 	Runtime   *RuntimeIntelligence
@@ -46,6 +46,7 @@ type IntelligenceDB struct {
 // NewIntelligenceDB creates a new intelligence database from parsed transactions.
 func NewIntelligenceDB(result core.ParseResult) (*IntelligenceDB, BuildReport, error) {
 	db := &IntelligenceDB{
+		Payees:    make(map[string]int),
 		Accounts:  NewTrie(),
 		Templates: make(map[string][]TemplateRecord),
 		Runtime:   NewRuntimeIntelligence(),
@@ -53,8 +54,8 @@ func NewIntelligenceDB(result core.ParseResult) (*IntelligenceDB, BuildReport, e
 
 	transactions := result.Transactions
 
-	// Extract unique payees
-	payeeSet := make(map[string]bool)
+	// Track payee usage frequencies
+	payeeFreq := make(map[string]int)
 	// Extract unique accounts
 	accountSet := make(map[string]bool)
 	// Capture non-fatal issues encountered during analysis.
@@ -62,7 +63,7 @@ func NewIntelligenceDB(result core.ParseResult) (*IntelligenceDB, BuildReport, e
 
 	for _, tx := range transactions {
 		if tx.Payee != "" {
-			payeeSet[tx.Payee] = true
+			payeeFreq[tx.Payee]++
 		}
 
 		// Process all postings to extract account names
@@ -73,12 +74,7 @@ func NewIntelligenceDB(result core.ParseResult) (*IntelligenceDB, BuildReport, e
 		}
 	}
 
-	// Convert payees to sorted slice
-	db.Payees = make([]string, 0, len(payeeSet))
-	for payee := range payeeSet {
-		db.Payees = append(db.Payees, payee)
-	}
-	sort.Strings(db.Payees)
+	db.Payees = payeeFreq
 
 	// Insert all accounts into the Trie
 	for account := range accountSet {
@@ -239,34 +235,46 @@ func NewIntelligenceDB(result core.ParseResult) (*IntelligenceDB, BuildReport, e
 
 // FindPayees returns payees that start with the given prefix.
 // Results from both base and runtime intelligence are merged and returned
-// in alphabetical order for a unified, consistent experience.
+// ranked by usage frequency (descending), with alphabetical tiebreaking.
 func (db *IntelligenceDB) FindPayees(prefix string) []string {
 	prefix = strings.ToLower(prefix)
 	seen := make(map[string]bool)
 	var matches []string
 
+	frequency := make(map[string]int)
+
 	// Collect all matching payees from runtime
 	if db.Runtime != nil {
-		for _, payee := range db.Runtime.FindPayees(prefix) {
-			if !seen[payee] {
-				matches = append(matches, payee)
-				seen[payee] = true
+		for payee, count := range db.Runtime.Payees {
+			if strings.HasPrefix(strings.ToLower(payee), prefix) {
+				frequency[payee] += count
 			}
 		}
 	}
 
 	// Collect all matching payees from base database (avoiding duplicates)
-	for _, payee := range db.Payees {
+	for payee, count := range db.Payees {
 		if strings.HasPrefix(strings.ToLower(payee), prefix) {
-			if !seen[payee] {
-				matches = append(matches, payee)
-				seen[payee] = true
-			}
+			frequency[payee] += count
 		}
 	}
 
-	// Sort results alphabetically for consistent ordering
-	sort.Strings(matches)
+	for payee := range frequency {
+		if !seen[payee] {
+			matches = append(matches, payee)
+			seen[payee] = true
+		}
+	}
+
+	// Sort by usage frequency (descending), then alphabetically for stability
+	sort.Slice(matches, func(i, j int) bool {
+		left := frequency[matches[i]]
+		right := frequency[matches[j]]
+		if left == right {
+			return matches[i] < matches[j]
+		}
+		return left > right
+	})
 	return matches
 }
 

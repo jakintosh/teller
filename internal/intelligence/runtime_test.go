@@ -44,14 +44,13 @@ func TestRuntimeBuildFromBatch(t *testing.T) {
 		t.Errorf("Expected 2 unique payees, got %d", len(runtime.Payees))
 	}
 
-	expectedPayees := []string{"Another Payee", "Brand New Payee"}
-	for i, expected := range expectedPayees {
-		if i >= len(runtime.Payees) {
-			t.Errorf("Missing payee at index %d", i)
-			continue
-		}
-		if runtime.Payees[i] != expected {
-			t.Errorf("Expected payee at index %d to be '%s', got '%s'", i, expected, runtime.Payees[i])
+	expectedPayeeFrequencies := map[string]int{
+		"Brand New Payee": 2,
+		"Another Payee":   1,
+	}
+	for payee, expected := range expectedPayeeFrequencies {
+		if got := runtime.Payees[payee]; got != expected {
+			t.Errorf("Expected payee %q frequency %d, got %d", payee, expected, got)
 		}
 	}
 
@@ -69,7 +68,7 @@ func TestRuntimeBuildFromBatch(t *testing.T) {
 
 func TestRuntimeBuildFromEmptyBatch(t *testing.T) {
 	runtime := NewRuntimeIntelligence()
-	runtime.Payees = []string{"Old Payee"}
+	runtime.Payees = map[string]int{"Old Payee": 1}
 	runtime.Templates["Old Payee"] = []TemplateRecord{{Frequency: 1}}
 
 	// Build from empty batch should clear everything
@@ -85,7 +84,7 @@ func TestRuntimeBuildFromEmptyBatch(t *testing.T) {
 
 func TestRuntimeBuildFromNilBatch(t *testing.T) {
 	runtime := NewRuntimeIntelligence()
-	runtime.Payees = []string{"Old Payee"}
+	runtime.Payees = map[string]int{"Old Payee": 1}
 
 	// Build from nil batch should not panic and should clear everything
 	runtime.BuildFromBatch(nil)

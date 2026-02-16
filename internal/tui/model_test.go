@@ -9,8 +9,10 @@ import (
 
 	"git.sr.ht/~jakintosh/teller/internal/core"
 	"git.sr.ht/~jakintosh/teller/internal/intelligence"
+	"git.sr.ht/~jakintosh/teller/internal/session"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/exp/teatest"
+	"github.com/shopspring/decimal"
 )
 
 func keyRunes(r rune) tea.KeyMsg {
@@ -497,5 +499,237 @@ func TestQuitConfirmDisplaysPendingCount(t *testing.T) {
 	view := model.renderConfirmView()
 	if !strings.Contains(view, "Quit without writing 2 pending transaction(s)?") {
 		t.Fatalf("expected quit confirmation to include pending count, got %q", view)
+	}
+}
+
+func TestTemplateApplyThenTabAndAddLineDoesNotPanic(t *testing.T) {
+	db := testDB(t)
+	model := NewModel(db, "ledger.dat", intelligence.BuildReport{})
+	model.startNewTransaction()
+	model.templateOptions = []intelligence.TemplateRecord{{
+		DebitAccounts:  []string{"Expenses:Rent"},
+		CreditAccounts: []string{"Assets:Checking"},
+		Frequency:      3,
+	}}
+	model.templateOffset = 0
+	model.currentView = viewTemplate
+
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			t.Fatalf("unexpected panic in template -> tab/ctrl+a flow: %v", recovered)
+		}
+	}()
+
+	model.updateTemplateView(tea.KeyMsg{Type: tea.KeyEnter})
+	if model.currentView != viewTransaction {
+		t.Fatalf("expected to return to transaction view, got %v", model.currentView)
+	}
+	if model.form.focusedField != focusSectionAccount || model.form.focusedSection != sectionDebit || model.form.focusedIndex != 0 {
+		t.Fatalf("expected focus on first debit account after template apply")
+	}
+
+	model.updateTransactionView(tea.KeyMsg{Type: tea.KeyTab})
+	model.updateTransactionView(tea.KeyMsg{Type: tea.KeyCtrlA})
+
+	if len(model.form.debitLines) != 2 {
+		t.Fatalf("expected ctrl+a to add a debit line after tabbing, got %d lines", len(model.form.debitLines))
+	}
+}
+
+func TestUpdateRecoverySavesBatchSession(t *testing.T) {
+	db := testDB(t)
+
+	tempDir := t.TempDir()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	defer func() { _ = os.Chdir(wd) }()
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+
+	model := NewModel(db, "ledger.dat", intelligence.BuildReport{})
+	model.batch = []core.Transaction{{
+		Payee: "Recovered Transaction",
+		Postings: []core.Posting{
+			{Account: "Expenses:Food", Amount: "10.00"},
+			{Account: "Assets:Checking", Amount: "-10.00"},
+		},
+	}}
+
+	model.startNewTransaction()
+	model.form.focusedField = focusPayee
+	model.form.payeeInput.Focus()
+	model.db = nil // force panic in refreshSuggestions -> m.db.FindPayees
+
+	if _, _ = model.Update(keyRunes('x')); model.err == nil {
+		t.Fatalf("expected panic to be recovered and exposed via model.err")
+	}
+	if !strings.Contains(model.err.Error(), "pending batch session was saved") {
+		t.Fatalf("expected recovery error to mention saved session, got %q", model.err)
+	}
+
+	restored, err := session.LoadBatch()
+	if err != nil {
+		t.Fatalf("expected recovered session file to be readable: %v", err)
+	}
+	if len(restored) != 1 || restored[0].Payee != "Recovered Transaction" {
+		t.Fatalf("expected recovered batch to be saved, got %+v", restored)
+	}
+}
+
+func TestLongSessionSmokeDiverseInputs(t *testing.T) {
+	db := testDB(t)
+
+	tempDir := t.TempDir()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	defer func() { _ = os.Chdir(wd) }()
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("chdir: %v", err)
+	}
+
+	ledgerPath := filepath.Join(tempDir, "ledger.dat")
+	if err := os.WriteFile(ledgerPath, []byte(""), 0644); err != nil {
+		t.Fatalf("create ledger file: %v", err)
+	}
+
+	model := NewModel(db, ledgerPath, intelligence.BuildReport{})
+
+	payees := []string{
+		"Sample Market",
+		"Fuel Station",
+		"Coffee Shop",
+		"CITY HARDWARE",
+		"Utilities Co.",
+		"Rent Co.",
+		"Cafe #42",
+	}
+	debitAccounts := []string{
+		"Expenses:Food:Groceries",
+		"Expenses:Auto:Gas",
+		"Expenses:Office:Supplies",
+		"Expenses:Home:Utilities",
+		"Expenses:Housing:Rent",
+	}
+	creditAccounts := []string{
+		"Assets:Checking",
+		"Assets:Savings",
+		"Liabilities:Credit Card",
+	}
+
+	const transactionCount = 325
+	for i := 0; i < transactionCount; i++ {
+		model.startNewTransaction()
+		if model.currentView != viewTransaction {
+			t.Fatalf("iteration %d: expected transaction view", i)
+		}
+
+		payee := payees[i%len(payees)]
+		if i%27 == 0 {
+			payee = "Sample Market"
+		}
+		model.form.payeeInput.SetValue(payee)
+		model.refreshTemplateOptions()
+		if i%5 == 0 {
+			model.form.commentInput.SetValue(fmt.Sprintf("note-%d edge:%d", i, (i*i)%97))
+		}
+
+		usedTemplate := false
+		if len(model.templateOptions) > 0 && i%2 == 0 {
+			model.form.focusedField = focusTemplateButton
+			model.updateTransactionView(tea.KeyMsg{Type: tea.KeyEnter})
+			if model.currentView != viewTemplate {
+				t.Fatalf("iteration %d: expected template view after enter", i)
+			}
+
+			if i%9 == 1 {
+				model.updateTemplateView(tea.KeyMsg{Type: tea.KeyEsc})
+			} else {
+				model.updateTemplateView(tea.KeyMsg{Type: tea.KeyEnter})
+				usedTemplate = true
+				model.updateTransactionView(tea.KeyMsg{Type: tea.KeyTab})
+				if i%11 == 0 {
+					model.updateTransactionView(tea.KeyMsg{Type: tea.KeyCtrlA})
+				}
+			}
+
+			if model.currentView != viewTransaction {
+				t.Fatalf("iteration %d: expected to return to transaction view", i)
+			}
+		}
+
+		for di := range model.form.debitLines {
+			if strings.TrimSpace(model.form.debitLines[di].accountInput.Value()) == "" {
+				model.form.debitLines[di].accountInput.SetValue(debitAccounts[(i+di)%len(debitAccounts)])
+			}
+		}
+		for ci := range model.form.creditLines {
+			if strings.TrimSpace(model.form.creditLines[ci].accountInput.Value()) == "" {
+				model.form.creditLines[ci].accountInput.SetValue(creditAccounts[(i+ci)%len(creditAccounts)])
+			}
+		}
+
+		debitTotal := decimal.Zero
+		for di := range model.form.debitLines {
+			amount := decimal.NewFromInt(int64((i+di)%9 + 1))
+			if usedTemplate && di == 0 && i%7 == 0 {
+				model.form.debitLines[di].amountInput.SetValue(fmt.Sprintf("%d+1", amount.IntPart()))
+				amount = amount.Add(decimal.NewFromInt(1))
+			} else {
+				model.form.debitLines[di].amountInput.SetValue(amount.StringFixed(2))
+			}
+			model.form.debitLines[di].amountInput.CursorEnd()
+			debitTotal = debitTotal.Add(amount)
+		}
+
+		otherCredits := decimal.Zero
+		for ci := 1; ci < len(model.form.creditLines); ci++ {
+			extra := decimal.NewFromInt(1).Neg()
+			model.form.creditLines[ci].amountInput.SetValue(extra.StringFixed(2))
+			otherCredits = otherCredits.Add(extra)
+		}
+		model.form.creditLines[0].amountInput.SetValue(debitTotal.Add(otherCredits).Neg().StringFixed(2))
+		model.form.creditLines[0].amountInput.CursorEnd()
+
+		if !model.confirmTransaction() {
+			t.Fatalf("iteration %d: confirm failed with status %q", i, model.statusMessage)
+		}
+		if model.err != nil {
+			t.Fatalf("iteration %d: unexpected recovered error: %v", i, model.err)
+		}
+
+		if i > 0 && i%40 == 0 {
+			editIdx := i / 2
+			if editIdx >= len(model.batch) {
+				editIdx = len(model.batch) - 1
+			}
+			model.startEditingTransaction(editIdx)
+			if model.currentView != viewTransaction {
+				t.Fatalf("iteration %d: expected transaction view while editing", i)
+			}
+			model.form.commentInput.SetValue(fmt.Sprintf("edited-%d", i))
+			if !model.confirmTransaction() {
+				t.Fatalf("iteration %d: edit confirm failed with status %q", i, model.statusMessage)
+			}
+			if model.err != nil {
+				t.Fatalf("iteration %d: unexpected recovered error after edit: %v", i, model.err)
+			}
+		}
+	}
+
+	if len(model.batch) != transactionCount {
+		t.Fatalf("expected %d transactions after long session, got %d", transactionCount, len(model.batch))
+	}
+
+	restored, err := session.LoadBatch()
+	if err != nil {
+		t.Fatalf("expected session file after smoke test: %v", err)
+	}
+	if len(restored) != len(model.batch) {
+		t.Fatalf("expected session to persist %d transactions, got %d", len(model.batch), len(restored))
 	}
 }

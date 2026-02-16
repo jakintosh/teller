@@ -62,30 +62,32 @@ func TestNewIntelligenceDB(t *testing.T) {
 	if len(db.Payees) != expectedPayeeCount {
 		t.Errorf("Expected %d unique payees, got %d", expectedPayeeCount, len(db.Payees))
 	}
+	expectedPayeeFrequencies := map[string]int{
+		"Super Grocery Store": 2,
+		"Gas Station":         1,
+		"Coffee Shop":         1,
+	}
+	for payee, expected := range expectedPayeeFrequencies {
+		if got := db.Payees[payee]; got != expected {
+			t.Errorf("Expected payee %q frequency %d, got %d", payee, expected, got)
+		}
+	}
 
 	// Check that accounts Trie is populated
 	if db.Accounts == nil {
 		t.Error("Expected Accounts Trie to be initialized")
 	}
 
-	// Check that payees are sorted
-	expectedPayees := []string{"Coffee Shop", "Gas Station", "Super Grocery Store"}
-	for i, expected := range expectedPayees {
-		if i >= len(db.Payees) {
-			t.Errorf("Missing payee at index %d: expected '%s'", i, expected)
-			continue
-		}
-		if db.Payees[i] != expected {
-			t.Errorf("Expected payee at index %d to be '%s', got '%s'", i, expected, db.Payees[i])
-		}
-	}
 }
 
 func TestFindPayees(t *testing.T) {
 	// Create mock transactions
 	transactions := []core.Transaction{
 		{Payee: "City Hardware", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "1"}, {Account: "Income:Misc", Amount: "-1"}}},
+		{Payee: "City Hardware", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "2"}, {Account: "Income:Misc", Amount: "-2"}}},
 		{Payee: "City Market", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "1"}, {Account: "Income:Misc", Amount: "-1"}}},
+		{Payee: "City Market", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "2"}, {Account: "Income:Misc", Amount: "-2"}}},
+		{Payee: "City Market", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "3"}, {Account: "Income:Misc", Amount: "-3"}}},
 		{Payee: "Coffee Shop", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "1"}, {Account: "Income:Misc", Amount: "-1"}}},
 		{Payee: "Gas Station", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "1"}, {Account: "Income:Misc", Amount: "-1"}}},
 	}
@@ -106,7 +108,7 @@ func TestFindPayees(t *testing.T) {
 	}{
 		{
 			prefix:   "Cit",
-			expected: []string{"City Hardware", "City Market"},
+			expected: []string{"City Market", "City Hardware"},
 		},
 		{
 			prefix:   "City H",
@@ -126,7 +128,7 @@ func TestFindPayees(t *testing.T) {
 		},
 		{
 			prefix:   "",
-			expected: []string{"City Hardware", "City Market", "Coffee Shop", "Gas Station"},
+			expected: []string{"City Market", "City Hardware", "Coffee Shop", "Gas Station"},
 		},
 	}
 
@@ -141,6 +143,43 @@ func TestFindPayees(t *testing.T) {
 				t.Errorf("For prefix '%s': expected result[%d] = '%s', got '%s'", test.prefix, i, expected, result[i])
 			}
 		}
+	}
+}
+
+func TestFindPayeesRanksByCombinedFrequency(t *testing.T) {
+	base := []core.Transaction{
+		{Payee: "Alpha Shop", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "1"}, {Account: "Income:Misc", Amount: "-1"}}},
+		{Payee: "Alpha Shop", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "2"}, {Account: "Income:Misc", Amount: "-2"}}},
+		{Payee: "Alpha Shop", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "3"}, {Account: "Income:Misc", Amount: "-3"}}},
+		{Payee: "Beta Shop", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "4"}, {Account: "Income:Misc", Amount: "-4"}}},
+		{Payee: "Beta Shop", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "5"}, {Account: "Income:Misc", Amount: "-5"}}},
+	}
+
+	db, report, err := NewIntelligenceDB(core.ParseResult{Transactions: base})
+	if err != nil {
+		t.Fatalf("Failed to create IntelligenceDB: %v", err)
+	}
+	if len(report.Issues) != 0 {
+		t.Fatalf("expected no build issues, got %d: %v", len(report.Issues), report.Issues)
+	}
+
+	runtimeBatch := []core.Transaction{
+		{Payee: "Alpha Shop", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "6"}, {Account: "Income:Misc", Amount: "-6"}}},
+		{Payee: "Charlie Cafe", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "7"}, {Account: "Income:Misc", Amount: "-7"}}},
+		{Payee: "Charlie Cafe", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "8"}, {Account: "Income:Misc", Amount: "-8"}}},
+		{Payee: "Charlie Cafe", Postings: []core.Posting{{Account: "Assets:Cash", Amount: "9"}, {Account: "Income:Misc", Amount: "-9"}}},
+	}
+	db.Runtime.BuildFromBatch(runtimeBatch)
+
+	results := db.FindPayees("")
+	expected := []string{"Alpha Shop", "Charlie Cafe", "Beta Shop"}
+	if !reflect.DeepEqual(results, expected) {
+		t.Fatalf("expected %v, got %v", expected, results)
+	}
+
+	alphaPrefix := db.FindPayees("aLp")
+	if len(alphaPrefix) != 1 || alphaPrefix[0] != "Alpha Shop" {
+		t.Fatalf("expected case-insensitive prefix to return Alpha Shop, got %v", alphaPrefix)
 	}
 }
 
