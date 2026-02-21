@@ -58,7 +58,13 @@ func (m *Model) tryAcceptSuggestion() bool {
 		return false
 	}
 
-	suggestion := input.CurrentSuggestion()
+	matches := input.MatchedSuggestions()
+	idx := input.CurrentSuggestionIndex()
+	if idx < 0 || idx >= len(matches) {
+		return false
+	}
+
+	suggestion := matches[idx]
 	if suggestion == "" {
 		return false
 	}

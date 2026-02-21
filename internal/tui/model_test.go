@@ -110,6 +110,24 @@ func TestTransactionActionsStackedVertically(t *testing.T) {
 	}
 }
 
+func TestEmptyPayeePrevSuggestionThenTabAdvancesWithoutPanic(t *testing.T) {
+	db := testDB(t)
+	model := NewModel(db, "ledger.dat", intelligence.BuildReport{})
+	model.startNewTransaction()
+
+	model.updateTransactionView(tea.KeyMsg{Type: tea.KeyTab})
+	if model.form.focusedField != focusPayee {
+		t.Fatalf("expected focus on payee, got %v", model.form.focusedField)
+	}
+
+	model.updateTransactionView(tea.KeyMsg{Type: tea.KeyUp})
+	model.updateTransactionView(tea.KeyMsg{Type: tea.KeyTab})
+
+	if model.form.focusedField != focusComment {
+		t.Fatalf("expected focus to advance to comment, got %v", model.form.focusedField)
+	}
+}
+
 func TestTransactionFlowAddsBatchEntry(t *testing.T) {
 	db := testDB(t)
 
